@@ -12,8 +12,10 @@ agent, removes only those spans, and reports `ALLOW`, `NEUTRALIZE` or `ALERT`.
 &nbsp;·&nbsp; [Code](https://github.com/ananya24s/Sentinel)
 &nbsp;·&nbsp; [Demo video](https://drive.google.com/file/d/1dzJsXbQC6NVFM4IYfl-UCSFj3V1sVApw/view?usp=sharing)
 
-> **Running it:** the trained models (about 640 MB) are not stored in the GitHub repository. The Round 2 submission ZIP
-> includes them, so `./run.sh` works there with no downloads. From a plain clone, rebuild them with the pipeline below.
+> **Running it:** the trained models (about 500 MB) are not stored in this repository. On the first `./run.sh` they are
+> downloaded once from the [v1.0 release](https://github.com/ananya24s/Sentinel/releases/tag/v1.0) (`sentinel-models.zip`).
+> Offline, or already have the file? `SENTINEL_MODELS_ZIP=/path/to/sentinel-models.zip ./run.sh`.
+> To rebuild the models from scratch, follow the pipeline below.
 
 ## How it works
 
@@ -70,7 +72,7 @@ python examples/agent_demo.py                     # a tiny agent loop using the 
 ## Quick start
 
 ```bash
-./run.sh          # creates the venv on first run, starts the demo, opens http://localhost:8000
+./run.sh          # first run: creates the venv and downloads the models; then starts the demo at http://localhost:8000
 ```
 
 Full pipeline from scratch:
