@@ -87,6 +87,7 @@ const CATS = [];
   pollHealth(async () => {
     ready = true; if (location.hash.includes('run')) runAll();
     for (const c of mine) await runOne(c.id, false, 'sample');   // show results for saved cases (not logged as new activity)
+    if (location.hash.includes('sample')) { $('#m-sample').click(); await addMine(); }   // deep link for screenshots and retakes
   });
 })();
 

@@ -115,7 +115,7 @@ async function initLive(ab) {
       dots[i].className = sOk ? 'ok' : 'bad'; done++; ms += j.sentinel.ms || 0;
       for (const key of ['poisoned', 'benign', 'clean']) { $('#t-' + key + '-s').innerHTML = `${c[key][0]}<span> / ${n(key)}</span>`; $('#t-' + key + '-b').textContent = c[key][1]; }
       $('#livebar').style.width = (100 * done / docs.length) + '%';
-      $('#livemeta').innerHTML = `<b>${done}</b> / ${docs.length} documents · ${((performance.now() - t0) / 1000).toFixed(0)} s · ${Math.round(ms / done)} ms per document for Sentinel`;
+      $('#livemeta').innerHTML = `<b>${done}</b> / ${docs.length} documents${performance.now() - t0 >= 2000 ? ' · ' + ((performance.now() - t0) / 1000).toFixed(0) + ' s' : ''} · ${Math.round(ms / done)} ms per document for Sentinel`;
     }
     running = false; btn.disabled = false; btn.textContent = 'Run again';
   };

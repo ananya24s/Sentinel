@@ -225,7 +225,13 @@ document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.ke
     $('#livenote').innerHTML = 'Showing your last scan from Home. Edit the request and press Send to call the API again.';
   } else { fill('Summarize the article.', '', 'webpage'); }
   renderCode();
-  pollHealth(() => { ready = true; });
+  pollHealth(() => {
+    ready = true;
+    const H = new Set(location.hash.replace('#', '').split('&').filter(Boolean));   // deep links: #ex=1&send
+    const e = [...H].find(x => x.startsWith('ex='));
+    if (e) { const b = $$('#chips .chip')[+e.slice(3)]; if (b) b.click(); }
+    if (H.has('send')) send();
+  });
 })();
 </script>
 </body>

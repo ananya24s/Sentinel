@@ -8,6 +8,7 @@ API. Scans are serialised with a lock because the models share one accelerator.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import uuid
@@ -22,7 +23,7 @@ from pydantic import BaseModel, Field
 ROOT = Path(__file__).resolve().parents[1]
 APP = Path(__file__).resolve().parent
 STATIC = APP / "static"
-ACTIVITY_PATH = ROOT / "data" / "activity.jsonl"
+ACTIVITY_PATH = Path(os.environ["SENTINEL_ACTIVITY"]) if os.environ.get("SENTINEL_ACTIVITY") else ROOT / "data" / "activity.jsonl"
 
 app = FastAPI(title="Sentinel", description="Tool-output trust-boundary defense for LLM agents.")
 _state = {"sentinel": None, "error": None, "dataset": None}

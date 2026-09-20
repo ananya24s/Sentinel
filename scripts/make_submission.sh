@@ -9,7 +9,7 @@ rm -rf "$OUT"; mkdir -p "$OUT/$NAME/Sentinel"
 STAGE="$OUT/$NAME/Sentinel"
 
 rsync -a \
-  --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' --exclude '.DS_Store' --exclude 'submission' \
+  --exclude '.git' --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' --exclude '.DS_Store' --exclude 'submission' \
   --exclude 'data/raw' --exclude 'data/cache' --exclude 'data/processed' --exclude 'data/activity.jsonl' \
   --exclude 'docs/*.pptx' --exclude 'docs/*.template.md' \
   ./ "$STAGE/"

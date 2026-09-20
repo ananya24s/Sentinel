@@ -8,6 +8,13 @@ Sentinel is a trust-boundary defense for LLM agents (Engineers' Day, LLM Enginee
 It sits between a tool and the agent, decides which spans of untrusted tool output are instructions aimed at the
 agent, removes only those spans, and reports `ALLOW`, `NEUTRALIZE` or `ALERT`.
 
+**Team Bug Slayers:** Ananya Singh, Naman Talwar, Pratham Dhyani
+&nbsp;·&nbsp; [Code](https://github.com/ananya24s/Sentinel)
+&nbsp;·&nbsp; [Demo video](https://drive.google.com/file/d/1dzJsXbQC6NVFM4IYfl-UCSFj3V1sVApw/view?usp=sharing)
+
+> **Running it:** the trained models (about 640 MB) are not stored in the GitHub repository. The Round 2 submission ZIP
+> includes them, so `./run.sh` works there with no downloads. From a plain clone, rebuild them with the pipeline below.
+
 ## How it works
 
 ```
