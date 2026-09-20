@@ -1,0 +1,7 @@
+{
+ "cases": 16,
+ "channel_label_accuracy": 1.0,
+ "forged_marker_detection": 1.0,
+ "forged_marker_stripped": 1.0,
+ "normal_text_not_flagged": 1.0
+}

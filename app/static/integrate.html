@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrate · Sentinel</title>
+<link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+<div class="wrap">
+  <div id="top"></div>
+  <main>
+    <h1 class="page">Use Sentinel in your agent</h1>
+    <p class="lead">Sentinel is not a website; it is a function that sits between “the tool returned something” and “the model reads it.” This page is the contract: what goes in, what comes out, and where the output goes.</p>
+
+    <div class="big-flow">
+      <div class="step"><i>01</i><b>The user asks</b><span>“Summarize this page.” This is the only trusted instruction.</span></div>
+      <div class="step"><i>02</i><b>Your agent calls a tool</b><span>Web fetch, email reader, database, file. Whatever comes back is <em>untrusted</em>.</span></div>
+      <div class="step hot"><i>03</i><b>Sentinel scans it</b><span><code>scan(task, tool_output)</code> returns clean content, the flagged spans and an action.</span></div>
+      <div class="step"><i>04</i><b>The agent reads the clean version</b><span>Send <code>processed_content</code> to the model, never the raw tool output.</span></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="tabs" id="codetabs"><button data-t="py" class="on">Python</button><button data-t="tool">Tool wrapper</button><button data-t="rest">REST API</button><button data-t="cli">Command line</button></div>
+        <div class="codebox"><button class="copy" id="copycode">Copy</button><pre id="code"></pre></div>
+      </div>
+      <div class="card pad">
+        <p class="lbl">Input → output</p>
+        <table class="spec">
+          <tr><th colspan="2">Input</th></tr>
+          <tr><td>task</td><td>The trusted user request. Sentinel uses it to judge what is on-task.</td></tr>
+          <tr><td>tool_output</td><td>The untrusted text: page, email, table, API response, file.</td></tr>
+          <tr><td>source</td><td><code>webpage · email · table · code · api</code>: where the text came from.</td></tr>
+        </table>
+        <table class="spec" style="margin-top:14px">
+          <tr><th colspan="2">Output</th></tr>
+          <tr><td>processed_content</td><td>The tool output with only the injected spans replaced by a marker. <b>Give this to the model.</b></td></tr>
+          <tr><td>trust_classification</td><td>Channel labels; forged role markers are listed here.</td></tr>
+          <tr><td>detected_spans</td><td>Each flagged span, its position, score and a plain-language reason.</td></tr>
+          <tr><td>action</td><td><code>ALLOW</code> nothing found · <code>NEUTRALIZE</code> stripped · <code>ALERT</code> dangerous payload or repeated attempts.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <h2 class="sh">Live request and response</h2>
+    <p class="lead" style="margin-bottom:16px" id="livenote">This is the real call for the last scan you ran.</p>
+    <div class="two-col">
+      <div class="card"><div class="tabs"><button class="on">Request · POST /api/scan</button></div><div class="codebox"><button class="copy" data-copy="req">Copy</button><pre id="req"></pre></div></div>
+      <div class="card"><div class="tabs"><button class="on">Response</button></div><div class="codebox"><button class="copy" data-copy="res">Copy</button><pre id="res"></pre></div></div>
+    </div>
+
+    <h2 class="sh">What your agent should do with it</h2>
+    <div class="do">
+      <div><b>Always use the clean text</b>Replace the raw tool output with <code>processed_content</code> in the model's context. Nothing else changes in your prompt.</div>
+      <div><b>Log every detection</b>Store <code>detected_spans</code> and <code>action</code>. Attempts are useful security telemetry even when they are neutralised (see the Activity page).</div>
+      <div><b>Escalate on ALERT</b>An <code>ALERT</code> means a dangerous payload (secrets, exfiltration, code) or several attempts. Notify a human or halt the run.</div>
+    </div>
+  </main>
+  <div id="bot"></div>
+</div>
+
+<script src="/static/js/common.js"></script>
+<script>
+mountChrome();
+const CODE = {
+py: `<span class="k">from</span> sentinel <span class="k">import</span> Guard
+
+guard = Guard()                       <span class="c"># loads the models once, at startup</span>
+
+page_text = my_web_tool(url)          <span class="c"># untrusted tool output</span>
+safe = guard.clean(
+    task=<span class="s">"Summarize the article."</span>,     <span class="c"># the trusted user request</span>
+    tool_output=page_text,
+    source=<span class="s">"webpage"</span>,
+)
+<span class="c"># give the clean text to your LLM instead of page_text</span>
+
+verdict = guard.check(task, page_text)   <span class="c"># full details: verdict["action"], verdict["detected_spans"]</span>`,
+tool: `<span class="k">from</span> sentinel <span class="k">import</span> Guard
+
+guard = Guard(on_alert=<span class="k">lambda</span> v: notify_security_team(v))
+
+<span class="c"># every result of this tool is cleaned before your agent sees it</span>
+<span class="n">@guard.tool</span>(source=<span class="s">"webpage"</span>, task=<span class="k">lambda</span> url, **_: current_user_request())
+<span class="k">def</span> fetch_page(url):
+    <span class="k">return</span> requests.get(url).text`,
+rest: `<span class="c"># run the server:  ./run.sh   (or python -m uvicorn app.server:app --port 8000)</span>
+curl -s http://localhost:8000/api/scan \\
+  -H <span class="s">'Content-Type: application/json'</span> \\
+  -d <span class="s">'{
+    "task": "Summarize the article.",
+    "tool_output": "...page text...",
+    "source": "webpage"
+  }'</span>
+
+<span class="c"># or let the server fetch a page for you</span>
+curl -s http://localhost:8000/api/fetch \\
+  -H <span class="s">'Content-Type: application/json'</span> \\
+  -d <span class="s">'{"url": "https://example.com/post", "task": "Summarize the page."}'</span>`,
+cli: `<span class="c"># scan a live page</span>
+python -m sentinel scan --task <span class="s">"Summarize the article."</span> --url https://example.com/post
+
+<span class="c"># scan a file or piped text; exit code 0 = ALLOW, 2 = something was removed</span>
+python -m sentinel scan --task <span class="s">"Find the total."</span> --file receipt.txt --source email
+cat page.txt | python -m sentinel scan --task <span class="s">"Summarize."</span> --json`};
+let ctab = 'py', last = recallScan();
+const rawText = html => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent; };
+function jsonHL(o) { return esc(JSON.stringify(o, null, 2)).replace(/(&quot;[^&]*?&quot;)(\s*:)?/g, (m, s, c) => c ? `<span class="n">${s}</span>${c}` : `<span class="s">${s}</span>`).replace(/\b(true|false|null|-?\d+\.?\d*)\b/g, '<span class="k">$1</span>'); }
+const clipT = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
+function specOut(res) { return { trust_classification: res.trust_classification, detected_spans: res.detected_spans.map(v => ({ text: clipT(v.text, 110), start: v.start, end: v.end, score: v.score, reason: v.reason })), processed_content: clipT(res.processed_content, 420), action: res.action }; }
+function renderLive() {
+  const l = last; window._req = JSON.stringify({ task: l.task, tool_output: l.tool_output, source: l.source }, null, 2);
+  $('#req').innerHTML = jsonHL({ task: l.task, tool_output: clipT(l.tool_output, 420), source: l.source });
+  window._res = JSON.stringify(specOut(l.res), null, 2); $('#res').innerHTML = jsonHL(specOut(l.res));
+}
+function renderCode() { $('#code').innerHTML = CODE[ctab]; }
+$('#codetabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; ctab = b.dataset.t; $$('#codetabs button').forEach(x => x.classList.toggle('on', x === b)); renderCode(); };
+$('#copycode').onclick = e => { navigator.clipboard.writeText(rawText(CODE[ctab])); flash(e.target, 'Copied'); };
+$$('[data-copy]').forEach(b => b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy === 'req' ? window._req : window._res); flash(b, 'Copied'); });
+renderCode();
+pollHealth(async () => {
+  if (last) { renderLive(); return; }
+  $('#livenote').textContent = 'No scan in this session yet, so this is a real call on a sample input.';
+  const ex = (await (await fetch('/api/examples')).json())[0];
+  const r = await post('/api/scan', { task: ex.task, tool_output: ex.tool_output, source: ex.source, mode: 'sentinel', origin: 'sample' });
+  if (r.ok) { last = { task: ex.task, tool_output: ex.tool_output, source: ex.source, res: r.data.sentinel }; renderLive(); }
+});
+</script>
+</body>
+</html>

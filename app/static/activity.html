@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity · Sentinel</title>
+<link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+<div class="wrap">
+  <div id="top"></div>
+  <main>
+    <h1 class="page">Activity</h1>
+    <p class="lead">Every scan the system has run, as your security team would see it. Sentinel keeps a record of what it removed and why, so attempts are visible even when they were neutralised. This is what “log every detection” looks like.</p>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card">
+      <div class="pad" style="padding-bottom:0">
+        <div class="filters">
+          <span class="lbl" style="margin:0">Action</span>
+          <div class="seg" id="f-act"><button data-v="" class="on">All</button><button data-v="ALLOW">Allow</button><button data-v="NEUTRALIZE">Neutralize</button><button data-v="ALERT">Alert</button></div>
+          <span class="lbl" style="margin:0 0 0 12px">From</span>
+          <div class="seg" id="f-org"><button data-v="" class="on">Anywhere</button><button data-v="playground">Home</button><button data-v="attack-lab">Attack lab</button><button data-v="api">API</button></div>
+          <div style="flex:1"></div>
+          <a class="btn ghost sm" href="/api/activity/export">Download JSON</a>
+          <button class="btn ghost sm" id="clear">Clear log</button>
+        </div>
+      </div>
+      <div id="tbl"></div>
+    </div>
+  </main>
+  <div id="bot"></div>
+</div>
+
+<script src="/static/js/common.js"></script>
+<script>
+mountChrome(); pollHealth();
+let rows = [], fa = '', fo = '', open = null;
+
+async function load() { rows = await (await fetch('/api/activity?limit=300')).json(); draw(); }
+function draw() {
+  const inj = rows.reduce((a, r) => a + r.injections.length, 0), alerts = rows.filter(r => r.action === 'ALERT').length;
+  const lat = rows.length ? Math.round(rows.reduce((a, r) => a + (r.latency_ms || 0), 0) / rows.length) : 0;
+  $('#kpis').innerHTML = [[rows.length, 'scans run'], [inj, 'injected spans removed'], [alerts, 'ALERT-level events'], [lat + ' ms', 'average scan time']].map(([b, s]) => `<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join('');
+  const list = rows.filter(r => (!fa || r.action === fa) && (!fo || r.origin === fo));
+  if (!list.length) { $('#tbl').innerHTML = `<div class="empty"><h3>${rows.length ? 'Nothing matches those filters' : 'No scans yet'}</h3><p>${rows.length ? '' : 'Run a scan on the Home page or the Attack lab and it will appear here.'}</p></div>`; return; }
+  const when = t => { const d = new Date(t); return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
+  $('#tbl').innerHTML = `<table class="log"><thead><tr><th>Time</th><th>Action</th><th>From</th><th>Task</th><th>Removed</th><th>Excerpt</th></tr></thead><tbody>${list.map(r => `
+    <tr class="row" data-id="${r.id}"><td class="mono">${when(r.ts)}</td><td><span class="badge b-${r.action}" style="padding:4px 9px;font-size:10.5px">${r.action}</span></td><td class="mono">${esc(r.origin)}${r.url ? ' · url' : ''}</td><td>${esc(r.task)}</td><td>${r.injections.length}</td><td><div class="ex">${esc(r.excerpt.replace(/\s+/g, ' '))}</div></td></tr>
+    ${open === r.id ? `<tr class="detail"><td colspan="6">${detail(r)}</td></tr>` : ''}`).join('')}</tbody></table>`;
+  $$('#tbl tr.row').forEach(tr => tr.onclick = () => { open = open === tr.dataset.id ? null : tr.dataset.id; draw(); });
+}
+function detail(r) {
+  return `<p class="lbl">Scan ${r.id} · ${esc(r.source)} · ${r.n_spans} spans · ${r.latency_ms} ms ${r.url ? '· ' + esc(r.url) : ''}</p>` +
+    (r.injections.length ? r.injections.map(v => `<div class="span inj" style="margin-bottom:8px"><div class="vp v-injection">REMOVED</div><div><div class="stext">${esc(v.text)}</div><div class="sreason">${esc(v.reason || '')}</div></div><div><div class="score">score ${v.score.toFixed(3)}</div><div class="track"><i style="width:${v.score * 100}%"></i></div></div></div>`).join('') : '<p class="note" style="margin:0">Nothing was removed.</p>');
+}
+$('#f-act').onclick = e => { const b = e.target.closest('button'); if (!b) return; fa = b.dataset.v; $$('#f-act button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
+$('#f-org').onclick = e => { const b = e.target.closest('button'); if (!b) return; fo = b.dataset.v; $$('#f-org button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
+$('#clear').onclick = async () => { if (confirm('Clear the activity log?')) { await fetch('/api/activity', { method: 'DELETE' }); load(); } };
+load(); setInterval(load, 5000);
+</script>
+</body>
+</html>

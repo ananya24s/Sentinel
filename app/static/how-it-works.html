@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Sentinel works</title>
+<link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+<div class="wrap">
+  <div id="top"></div>
+  <main class="narrow">
+    <h1 class="page">How Sentinel works</h1>
+    <p class="lead">Five stages turn untrusted text into a clean context and a verdict. Pick a sample and step through it: every number below is the real output of the running system for that sample.</p>
+
+    <div class="picker"><span class="lbl" style="margin:0">Sample</span><select id="pick"></select><span class="note" style="margin:0">Tool output is scanned for the task shown in stage 1.</span></div>
+
+    <div class="stepper" id="stepper"></div>
+    <div class="card stagebox" id="stage"><div class="empty"><span class="spin big"></span><h3 style="margin-top:14px">Loading the models…</h3></div></div>
+    <div class="navrow"><button class="btn ghost" id="prev">← Back</button><span class="note" id="pos" style="margin:0"></span><button class="btn" id="next">Next stage →</button></div>
+  </main>
+  <div id="bot"></div>
+</div>
+
+<script src="/static/js/common.js"></script>
+<script>
+mountChrome();
+const STAGES = [
+  ['Boundary', 'Decide who is allowed to give orders'],
+  ['Segment', 'Cut the text into pieces we can judge'],
+  ['Scorer', 'Ask: does this read like a command to an AI?'],
+  ['Off-task check', 'Ask: does it belong here at all?'],
+  ['Verdict & action', 'Remove the bad pieces, report what happened'],
+];
+let cases = [], cur = 0, R = null, C = null;
+
+(async function boot() {
+  cases = await (await fetch('/api/attacks')).json();
+  $('#pick').innerHTML = cases.map((c, i) => `<option value="${i}">${esc(c.title)}  ·  ${esc(c.category)}</option>`).join('');
+  $('#pick').onchange = () => run();
+  $('#stepper').innerHTML = STAGES.map((s, i) => `<button data-i="${i}"><i>STAGE ${i + 1}</i><b>${s[0]}</b></button>`).join('');
+  $('#stepper').onclick = e => { const b = e.target.closest('button'); if (b) go(+b.dataset.i); };
+  $('#prev').onclick = () => go(cur - 1); $('#next').onclick = () => go(cur + 1);
+  const pm = location.hash.match(/case=([\w-]+)/); if (pm) { const ix = cases.findIndex(c => c.id === pm[1]); if (ix >= 0) $('#pick').value = ix; }
+  pollHealth(run);
+})();
+
+async function run() {
+  C = cases[+$('#pick').value];
+  $('#stage').innerHTML = '<div class="empty"><span class="spin big"></span></div>';
+  const r = await post('/api/scan', { task: C.task, tool_output: C.tool_output, source: C.source, mode: 'sentinel', origin: 'sample' });
+  if (!r.ok) { $('#stage').innerHTML = '<div class="empty"><h3>Models are still loading</h3></div>'; return; }
+  R = r.data.sentinel; const m = location.hash.match(/stage=(\d)/); go(m ? +m[1] - 1 : cur);
+}
+function go(i) {
+  cur = Math.max(0, Math.min(STAGES.length - 1, i));
+  $$('#stepper button').forEach((b, k) => { b.classList.toggle('on', k === cur); b.classList.toggle('done', k < cur); });
+  $('#prev').disabled = cur === 0; $('#next').disabled = cur === STAGES.length - 1;
+  $('#next').textContent = cur === STAGES.length - 2 ? 'Final stage →' : 'Next stage →';
+  $('#pos').textContent = `Stage ${cur + 1} of ${STAGES.length}`;
+  if (R) $('#stage').innerHTML = VIEWS[cur]();
+}
+const clip = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
+
+const VIEWS = [
+  () => { // boundary
+    const tc = R.trust_classification;
+    return `<h2>1 · Boundary: who is allowed to give orders?</h2>
+    <p class="why">Trust is decided by <b>which channel the text arrived on</b>, never by what the text says about itself. The user's request is trusted. Everything a tool returns is data, even if it claims to be the system or the user.</p>
+    <div class="trustbox">
+      <div class="tb t"><small>Trusted · the user's request</small><p>${esc(C.task)}</p></div>
+      <div class="tb u"><small>Untrusted · tool output (${esc(tc.source)})</small><p>${esc(C.tool_output)}</p></div>
+    </div>
+    <div class="mets" style="margin-top:16px"><span class="met">forged role markers found <b>${tc.spoofed_role_markers.length}</b></span>${tc.spoofed_role_markers.map(m => `<span class="met"><b>${esc(m)}</b></span>`).join('')}</div>
+    <p class="note">A span that forges a trusted role (<code>SYSTEM:</code>, <code>[INST]</code>, chat-template tokens) is treated as an injection by construction.</p>`;
+  },
+  () => { // segment
+    const n = R.spans.length;
+    return `<h2>2 · Segment: cut the text into pieces we can judge</h2>
+    <p class="why">Sentinel judges and removes <b>one span at a time</b>, so the useful content is never thrown away with the bad part. Spans are sentences and lines, with two exceptions: an HTML comment and a fenced code block (with the sentence introducing it) each stay whole, so a multi-sentence hidden instruction is removed completely.</p>
+    <div>${R.spans.slice(0, 80).map((s, i) => `<span class="sp ${s.text.startsWith('<!--') || s.text.includes('```') ? 'blk' : ''}"><i>${i + 1}</i>${esc(clip(s.text, 120))}</span>`).join('')}</div>
+    <div class="mets"><span class="met">spans <b>${n}</b></span><span class="met">characters <b>${C.tool_output.length}</b></span>${n > 80 ? '<span class="met">showing first <b>80</b></span>' : ''}</div>`;
+  },
+  () => { // scorer
+    const top = [...R.spans].sort((a, b) => b.signals.instruction_likeness - a.signals.instruction_likeness).slice(0, 8);
+    return `<h2>3 · Scorer: does it read like a command to an AI?</h2>
+    <p class="why">A small language model (DeBERTa-v3-small, fine-tuned) reads each span together with the user's task and the kind of source, and outputs the probability that the span is an instruction aimed at the agent. It is fast, and it decides the clear cases on its own.</p>
+    <div class="rowbars">${top.map(s => `<div class="rb ${s.signals.instruction_likeness >= .5 ? 'hot' : ''}"><div class="t">${esc(s.text)}</div><div><div class="score">P(instruction) ${(s.signals.instruction_likeness * 100).toFixed(1)}%</div><div class="track"><i style="width:${Math.max(2, s.signals.instruction_likeness * 100)}%;${s.signals.instruction_likeness >= .5 ? 'background:var(--sig)' : ''}"></i></div></div></div>`).join('')}</div>
+    <p class="note">Top ${top.length} of ${R.spans.length} spans by score. Recipes and manuals contain plenty of commands ("Preheat the oven"), so a high score alone is not enough to remove something. That is what the next stage is for.</p>`;
+  },
+  () => { // off-task
+    const top = [...R.spans].sort((a, b) => b.score - a.score).slice(0, 6);
+    const bar = (l, v, hot) => `<div class="sig"><div class="sl"><span>${l}</span><b>${(v * 100).toFixed(0)}%</b></div><div class="track"><i style="width:${Math.max(2, Math.min(100, v * 100))}%;${hot ? 'background:var(--sig)' : ''}"></i></div></div>`;
+    return `<h2>4 · Off-task check: does it belong here at all?</h2>
+    <p class="why">An injection is, by construction, <b>not about what the user asked and not about what the page is about</b>. For every span we measure how close it is to the user's task, and how well it fits the rest of the document with that span left out (a leave-one-out coherence check using a small sentence-embedding model). The odd one out gets a high score.</p>
+    ${top.map(s => { const g = s.signals; return `<div class="infl"><p class="q">“${esc(clip(s.text, 150))}”</p><div class="three">${bar('Reads like an instruction', g.instruction_likeness, g.instruction_likeness >= .5)}${bar('Related to your task', Math.max(0, g.task_relatedness), false)}${bar('Fits the rest of the page', Math.max(0, g.page_coherence), false)}</div><div class="mets"><span class="met">odd-one-out <b>${g.oddness_z > 0 ? '+' : ''}${g.oddness_z.toFixed(1)}</b></span><span class="met">fused score <b>${s.score.toFixed(2)}</b></span></div></div>`; }).join('')}
+    <p class="note">A gradient-boosted model combines the scorer's confidence with these off-task signals. We first tried to measure this by running a small LLM with and without each span. It did not work at that model size (see the Benchmark page), so we measure the off-task signal directly.</p>`;
+  },
+  () => { // verdict
+    const inj = R.detected_spans;
+    return `<h2>5 · Verdict &amp; action</h2>
+    <p class="why">Spans scoring above the decision threshold are replaced by a marker. Everything else passes through word for word. Then an action is chosen:</p>
+    <div class="grid3" style="margin-bottom:18px">
+      <div class="tb"><small style="color:var(--safe)">ALLOW</small><p style="font-size:13px">Nothing suspicious found. The content is unchanged.</p></div>
+      <div class="tb"><small style="color:var(--amber)">NEUTRALIZE</small><p style="font-size:13px">One instruction removed; the rest is intact.</p></div>
+      <div class="tb"><small style="color:var(--sig)">ALERT</small><p style="font-size:13px">A dangerous payload (secrets, exfiltration, code) or several attempts.</p></div>
+    </div>
+    <div class="docs c2" style="padding:0">${docCard('As received', received(C.tool_output, R), null, false)}${docCard('What the agent receives', processed(R), R.action, false)}</div>
+    <div class="rowbars" style="margin-top:16px">${inj.length ? inj.map(v => `<div class="rb hot"><div class="t">${esc(v.text)}</div><div><div class="score">${esc(v.reason || '')}</div></div></div>`).join('') : '<p class="note">No spans were removed for this sample.</p>'}</div>`;
+  },
+];
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmark · Sentinel</title>
+<link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+<div class="wrap">
+  <div id="top"></div>
+  <main>
+    <h1 class="page">Benchmark</h1>
+    <p class="lead">Every number here was produced by the scripts in the repository, on documents the models never trained on. Nothing on this page is typed in by hand.</p>
+    <div id="out"><div class="empty"><span class="spin big"></span></div></div>
+  </main>
+  <div id="bot"></div>
+</div>
+
+<script src="/static/js/common.js"></script>
+<script>
+mountChrome(); pollHealth();
+(async function () {
+  const r = await (await fetch('/api/results')).json();
+  const ab = r.final, ds = r.dataset || {}, el = $('#out');
+  if (!ab) { el.innerHTML = '<div class="card empty"><h3>No results yet</h3><p>Run scripts/eval_rel.py to generate the benchmark tables.</p></div>'; return; }
+  const cols = [['span_precision', 'Precision'], ['span_recall', 'Recall'], ['doc_injection_recall', 'Poisoned docs caught'], ['span_fpr', 'False-positive rate'], ['doc_fpr_benign_imperative', 'False alarms on harmless commands'], ['content_preservation', 'Content preserved']];
+  const bar = v => `<div class="cell"><div class="tr"><i style="width:${Math.min(100, (v || 0) * 100)}%"></i></div><span>${pc(v)}</span></div>`;
+  const table = (src, rows) => { let t = `<table class="res"><thead><tr><th>System</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>`; for (const [k, name, cls] of rows) { if (!src[k]) continue; t += `<tr class="${cls || ''}"><td>${name}</td>${cols.map(c => `<td>${bar(src[k][c[0]])}</td>`).join('')}</tr>`; } return t + '</tbody></table>'; };
+  const main = table(ab, [['baseline', 'Baseline · tags + patterns'], ['scorer', 'Fast scorer (DeBERTa-v3-small)'], ['+boundary', '+ boundary rule'], ['sentinel', 'Sentinel · scorer + off-task check', 'full']]);
+  const rw = ab.realweb ? table(ab.realweb, [['baseline', 'Baseline · tags + patterns'], ['scorer', 'Fast scorer'], ['sentinel', 'Sentinel', 'full']]) : '';
+  const exp = table(ab, [['llm_judge', 'Scorer + small-LLM verifier (1.5B)'], ['llm_influence', 'Scorer + behavioural influence test (1.5B)'], ['llm_full', 'Scorer + verifier + influence']]);
+  const fams = Object.keys(ab.baseline.recall_by_family);
+  const famHtml = `<div class="fam">` + fams.map(f => `<div class="famrow"><span>${esc(f)}</span>${heat(ab.baseline.recall_by_family[f])}${heat(ab.scorer.recall_by_family[f])}${heat(ab.sentinel.recall_by_family[f])}</div>`).join('') + '</div>';
+  const S = ab.sentinel, B = r.boundary || {};
+  el.innerHTML = `<div class="kpis">
+    <div class="kpi"><b>${ds.test ? ds.test.docs.toLocaleString() : '–'}</b><span>held-out test documents</span></div>
+    <div class="kpi"><b>${fams.length}</b><span>attack families never seen in training</span></div>
+    <div class="kpi"><b>${pc(S.doc_injection_recall)}</b><span>of poisoned documents caught (baseline ${pc(ab.baseline.doc_injection_recall)})</span></div>
+    <div class="kpi"><b>${pc(S.span_precision)}</b><span>precision (baseline ${pc(ab.baseline.span_precision)})</span></div></div>
+    <div class="card pad"><p class="lbl">Ablation · held-out test set</p>${main}
+    <p class="note">Every row is scored on the same documents. The attack families in the test set appear in neither scorer training nor fusion calibration. “False alarms on harmless commands” is the share of documents containing a normal instruction-shaped sentence (recipes, manuals, admin emails, HTML comments) in which a harmless sentence was flagged.</p></div>
+    ${rw ? `<h2 class="sh">Real web pages from sites never seen in training</h2><div class="card pad"><p class="lbl">Harvested public pages (docs, news, Wikipedia, blogs, READMEs) with attacks inserted</p>${rw}
+    <p class="note">Real pages are messy: navigation, cookie banners, code samples, HTML comments. Test sites are held out by domain.</p></div>` : ''}
+    <h2 class="sh">Boundary classification</h2>
+    <div class="kpis"><div class="kpi"><b>${pc(B.channel_label_accuracy)}</b><span>channel labelled correctly</span></div><div class="kpi"><b>${pc(B.forged_marker_detection)}</b><span>forged role markers detected</span></div><div class="kpi"><b>${pc(B.normal_text_not_flagged)}</b><span>normal text not flagged</span></div><div class="kpi"><b>${B.cases || '–'}</b><span>hand-written cases (small; the rule is structural)</span></div></div>
+    <h2 class="sh">What we tried and did not adopt</h2>
+    <div class="card pad"><p class="lbl">Small local LLM as verifier / behavioural counterfactual (Qwen2.5-1.5B, evaluated on the first-round benchmark)</p>${exp}
+    <p class="note">Our original idea was a behavioural counterfactual: run the agent with and without a span and see whether its behaviour moves off-task. With a 1.5B local model the agent mostly ignores injections, so with/without responses barely differ; the influence features received near-zero weight and hurt precision. The off-task signal that works is measured directly with sentence embeddings.</p></div>
+    <h2 class="sh">Recall by held-out attack family</h2>
+    <div class="card pad"><div class="famrow" style="background:none;margin-bottom:6px;max-width:420px"><span class="h" style="text-align:left">FAMILY</span><span class="h">BASE</span><span class="h">SCORER</span><span class="h">SENTINEL</span></div>${famHtml}</div>`;
+})();
+</script>
+</body>
+</html>

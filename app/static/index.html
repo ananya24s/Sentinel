@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel · tool output is data, not commands</title>
+<link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+<div class="wrap">
+  <div id="top"></div>
+
+  <main class="narrow">
+    <section class="home-hero">
+      <h1>Paste anything an AI agent <em>might read.</em></h1>
+      <p>Sentinel finds the hidden instructions in it and blacks them out. Nothing else is touched.</p>
+    </section>
+
+    <section class="card composer">
+      <textarea id="box" spellcheck="false" placeholder="Paste a web page, email, table or API response here, or just a URL."></textarea>
+      <div class="hintline"><span id="hint">Tip: paste a URL and Sentinel will fetch the page the way an agent's web tool sees it.</span><span><kbd>⌘</kbd> <kbd>↵</kbd> to scan</span></div>
+      <div class="row">
+        <input type="text" id="task" placeholder="What did the user ask the agent to do?  e.g. Summarize this page">
+        <button class="btn" id="go">Scan</button>
+      </div>
+      <div class="tryrow">
+        <span class="lbl">Try an example</span>
+        <div class="chips" id="chips"></div>
+        <button class="optlink" id="optbtn">Options ▾</button>
+      </div>
+      <div class="options" id="opts" hidden>
+        <div><p class="lbl">Where did the text come from</p>
+          <div class="seg" id="src"><button data-v="webpage" class="on">webpage</button><button data-v="email">email</button><button data-v="table">table</button><button data-v="code">code</button><button data-v="api">api</button></div></div>
+        <div><p class="lbl">Compare with</p>
+          <div class="seg" id="mode"><button data-v="sentinel" class="on">Sentinel only</button><button data-v="both">Side by side with baseline</button></div></div>
+      </div>
+    </section>
+
+    <section id="resultwrap">
+      <div class="sampletag"><span class="tag" id="sampletag">Sample scan</span><span id="sampletext">This is a real scan of the example above. Change the text or press Scan to run your own.</span></div>
+      <div class="card" id="verdict"><div class="empty"><div><span class="spin big"></span></div><h3 style="margin-top:14px">Loading the models…</h3><p>This takes a few seconds the first time.</p></div></div>
+    </section>
+
+    <section class="nextrow grid3">
+      <a class="nextcard" href="/how-it-works"><b>See how it works →</b><span>Watch a sample move through the five stages, with each stage's real output.</span></a>
+      <a class="nextcard" href="/attack-lab"><b>Try the attack lab →</b><span>Fourteen ways attackers hide instructions, and whether Sentinel catches each one.</span></a>
+      <a class="nextcard" href="/integrate"><b>Use it in your agent →</b><span>Three lines of Python, a REST call, or a command. This is where the output goes.</span></a>
+    </section>
+  </main>
+
+  <div id="bot"></div>
+</div>
+
+<script src="/static/js/common.js"></script>
+<script>
+mountChrome();
+let examples = [], source = 'webpage', cmp = 'sentinel', ready = false, sampleShown = true, busy = false;
+const SHOW = ['override', 'reworded', 'marketing', 'hidden-html', 'admin-email', 'recipe'];
+
+(async function boot() {
+  examples = await (await fetch('/api/examples')).json();
+  const list = SHOW.map(id => examples.findIndex(e => e.id === id)).filter(i => i >= 0);
+  $('#chips').innerHTML = list.map(i => `<button class="chip" data-i="${i}">${esc(examples[i].label)}</button>`).join('');
+  $('#chips').onclick = ev => { const b = ev.target.closest('.chip'); if (b) loadExample(+b.dataset.i, true); };
+  const H = new Set(location.hash.replace('#', '').split('&').filter(Boolean));
+  const ex = [...H].find(x => x.startsWith('ex=')); if (H.has('compare')) { cmp = 'both'; setSeg('#mode', 'both'); }
+  loadExample(ex ? +ex.slice(3) : list[0], false);
+  let loaded = null;
+  try { loaded = JSON.parse(sessionStorage.getItem('sentinel.load')); sessionStorage.removeItem('sentinel.load'); } catch (e) { /* ignore */ }
+  if (loaded) { $('#box').value = loaded.text; $('#task').value = loaded.task; source = loaded.source; setSeg('#src', source); updateHint(); markSample(false, loaded.label); $$('#chips .chip').forEach(c => c.classList.remove('on')); }
+  pollHealth(() => { ready = true; scan(!loaded); });
+})();
+
+function setSeg(sel, v) { $$(sel + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
+function loadExample(i, run) {
+  const e = examples[i]; if (!e) return;
+  $$('#chips .chip').forEach(c => c.classList.toggle('on', +c.dataset.i === i));
+  $('#box').value = e.tool_output; $('#task').value = e.task; source = e.source; setSeg('#src', source); updateHint();
+  if (run) { markSample(false, e.label); scan(false); }
+}
+function markSample(isSample, label) {
+  sampleShown = isSample;
+  const wrap = $('.sampletag');
+  if (isSample) { wrap.hidden = false; $('#sampletag').textContent = 'Sample scan'; $('#sampletext').textContent = 'This is a real scan of the example above. Change the text or press Scan to run your own.'; }
+  else if (label) { wrap.hidden = false; $('#sampletag').textContent = 'Example'; $('#sampletext').textContent = label; }
+  else wrap.hidden = true;
+}
+function updateHint() {
+  const v = $('#box').value;
+  $('#hint').innerHTML = looksLikeUrl(v) ? '<b>That looks like a URL.</b> Sentinel will fetch the page and scan its text.' : 'Tip: paste a URL and Sentinel will fetch the page the way an agent\'s web tool sees it.';
+}
+$('#box').addEventListener('input', () => { updateHint(); if (sampleShown) markSample(false); });
+$('#task').addEventListener('input', () => { if (sampleShown) markSample(false); });
+$('#src').onclick = e => { const b = e.target.closest('button'); if (b) { source = b.dataset.v; setSeg('#src', source); } };
+$('#mode').onclick = e => { const b = e.target.closest('button'); if (b) { cmp = b.dataset.v; setSeg('#mode', cmp); } };
+$('#optbtn').onclick = () => { const o = $('#opts'); o.hidden = !o.hidden; $('#optbtn').textContent = o.hidden ? 'Options ▾' : 'Options ▴'; };
+$('#go').onclick = () => { markSample(false); scan(false); };
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { markSample(false); scan(false); } });
+
+async function scan(initial) {
+  const box = $('#box').value; if (!box.trim()) { $('#box').focus(); return; }
+  if (busy) return; busy = true;
+  const go = $('#go'); go.disabled = true; go.innerHTML = '<span class="spin"></span> Scanning…';
+  const el = $('#verdict');
+  try {
+    if (looksLikeUrl(box)) {
+      const task = $('#task').value.trim() || 'Summarize the page.';
+      const url = box.trim();
+      const r = await post('/api/fetch', { url, task, mode: cmp, origin: 'playground' });
+      if (!r.ok) { el.innerHTML = `<div class="empty"><h3>${r.status === 503 ? 'Models are still loading' : 'Could not fetch that page'}</h3><p>${esc((r.data && r.data.error) || '')}</p></div>`; return; }
+      const j = r.data; rememberScan({ task, tool_output: j.text, source: 'webpage', res: j.sentinel || j.baseline });
+      renderResult(el, j, j.text, task, j.page);
+    } else {
+      const task = $('#task').value.trim() || 'Summarize this.';
+      const r = await post('/api/scan', { task, tool_output: box, source, mode: cmp, origin: initial ? 'sample' : 'playground' });
+      if (!r.ok) { el.innerHTML = '<div class="empty"><h3>Models are still loading</h3><p>Give it a few seconds and press Scan again.</p></div>'; return; }
+      const j = r.data; rememberScan({ task, tool_output: box, source, res: j.sentinel || j.baseline });
+      renderResult(el, j, box, task, null);
+    }
+  } catch (e) { el.innerHTML = `<div class="empty"><h3>Could not reach the server</h3><p>${esc(e)}</p></div>`; }
+  finally { busy = false; go.disabled = false; go.textContent = 'Scan'; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 64" width="250" height="64" role="img" aria-label="Sentinel">
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+  <rect x="15" y="14" width="34" height="5" rx="2.5" fill="#FFFFFF" fill-opacity=".42"/>
+  <rect x="9" y="25" width="46" height="14" rx="3" fill="#FF5A36"/>
+  <rect x="15" y="45" width="22" height="5" rx="2.5" fill="#FFFFFF" fill-opacity=".42"/>
+  <text x="80" y="43" font-family="'Source Serif 4','Cambria',Georgia,serif" font-size="34" font-weight="700" fill="#0E1116" letter-spacing=".3">Sentinel</text>
+</svg>

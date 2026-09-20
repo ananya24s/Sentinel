@@ -1,0 +1,17 @@
+accelerate
+beautifulsoup4
+datasets
+fastapi
+joblib
+numpy
+pandas
+protobuf
+pydantic
+scikit-learn
+sentence-transformers
+sentencepiece
+tiktoken
+torch
+tqdm
+transformers>=5.0
+uvicorn[standard]

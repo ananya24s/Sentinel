@@ -1,0 +1,31 @@
+{
+ "train": {
+  "docs": 6600,
+  "poisoned": 3300,
+  "families": 26,
+  "spans": 161106,
+  "realweb_docs": 0
+ },
+ "val": {
+  "docs": 1188,
+  "poisoned": 396,
+  "families": 10,
+  "spans": 45241,
+  "realweb_docs": 0
+ },
+ "cal": {
+  "docs": 1945,
+  "poisoned": 965,
+  "families": 23,
+  "spans": 127285,
+  "realweb_docs": 1372
+ },
+ "test": {
+  "docs": 1755,
+  "poisoned": 885,
+  "families": 29,
+  "spans": 71353,
+  "realweb_docs": 572
+ },
+ "real_pages": 146
+}
