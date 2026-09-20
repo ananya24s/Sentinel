@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/site.css">
+<script>document.documentElement.dataset.theme=(function(){var q=new URLSearchParams(location.search).get('theme');if(q==='light'||q==='dark')return q;try{return localStorage.getItem('sentinel.theme')}catch(e){return null}})()||(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')</script>
 </head>
 <body>
 <div class="wrap">
@@ -19,8 +20,11 @@
       <p>Sentinel finds the hidden instructions in it and blacks them out. Nothing else is touched.</p>
     </section>
 
-    <section class="card composer">
-      <textarea id="box" spellcheck="false" placeholder="Paste a web page, email, table or API response here, or just a URL."></textarea>
+    <section class="strip" id="strip" hidden></section>
+    <p class="stripnote" id="stripnote" hidden></p>
+
+    <section class="card composer" id="composer">
+      <textarea id="box" spellcheck="false" placeholder="Paste a web page, email, table or API response here, or just a URL.&#10;&#10;You can also drop a .txt, .html or .eml file onto this box."></textarea>
       <div class="hintline"><span id="hint">Tip: paste a URL and Sentinel will fetch the page the way an agent's web tool sees it.</span><span><kbd>⌘</kbd> <kbd>↵</kbd> to scan</span></div>
       <div class="row">
         <input type="text" id="task" placeholder="What did the user ask the agent to do?  e.g. Summarize this page">
@@ -40,8 +44,12 @@
     </section>
 
     <section id="resultwrap">
-      <div class="sampletag"><span class="tag" id="sampletag">Sample scan</span><span id="sampletext">This is a real scan of the example above. Change the text or press Scan to run your own.</span></div>
-      <div class="card" id="verdict"><div class="empty"><div><span class="spin big"></span></div><h3 style="margin-top:14px">Loading the models…</h3><p>This takes a few seconds the first time.</p></div></div>
+      <div class="sampletag" id="sampletag" hidden><span class="tag">Example</span><span id="sampletext"></span></div>
+      <div class="card emptyres" id="verdict">
+        <div class="mk"><i></i><i></i><i></i></div>
+        <h3>Your result will appear here</h3>
+        <p>Paste something above, drop a file, or pick an example. Sentinel blacks out only the instruction and shows exactly what the agent would receive.</p>
+      </div>
     </section>
 
     <section class="nextrow grid3">
@@ -57,7 +65,7 @@
 <script src="/static/js/common.js"></script>
 <script>
 mountChrome();
-let examples = [], source = 'webpage', cmp = 'sentinel', ready = false, sampleShown = true, busy = false;
+let examples = [], source = 'webpage', cmp = 'sentinel', ready = false, busy = false, pending = false;
 const SHOW = ['override', 'reworded', 'marketing', 'hidden-html', 'admin-email', 'recipe'];
 
 (async function boot() {
@@ -65,61 +73,89 @@ const SHOW = ['override', 'reworded', 'marketing', 'hidden-html', 'admin-email',
   const list = SHOW.map(id => examples.findIndex(e => e.id === id)).filter(i => i >= 0);
   $('#chips').innerHTML = list.map(i => `<button class="chip" data-i="${i}">${esc(examples[i].label)}</button>`).join('');
   $('#chips').onclick = ev => { const b = ev.target.closest('.chip'); if (b) loadExample(+b.dataset.i, true); };
+  fillStrip();
+
+  // deep links (used for screenshots and the demo video): #compare  #ex=3
   const H = new Set(location.hash.replace('#', '').split('&').filter(Boolean));
-  const ex = [...H].find(x => x.startsWith('ex=')); if (H.has('compare')) { cmp = 'both'; setSeg('#mode', 'both'); }
-  loadExample(ex ? +ex.slice(3) : list[0], false);
+  if (H.has('compare')) { cmp = 'both'; setSeg('#mode', 'both'); }
+  const ex = [...H].find(x => x.startsWith('ex='));
+  if (ex) { loadExample(+ex.slice(3), false); pending = true; }
+
+  // "Open in Home" from the Attack lab
   let loaded = null;
   try { loaded = JSON.parse(sessionStorage.getItem('sentinel.load')); sessionStorage.removeItem('sentinel.load'); } catch (e) { /* ignore */ }
-  if (loaded) { $('#box').value = loaded.text; $('#task').value = loaded.task; source = loaded.source; setSeg('#src', source); updateHint(); markSample(false, loaded.label); $$('#chips .chip').forEach(c => c.classList.remove('on')); }
-  pollHealth(() => { ready = true; scan(!loaded); });
+  if (loaded) { $('#box').value = loaded.text; $('#task').value = loaded.task; source = loaded.source; setSeg('#src', source); updateHint(); note(loaded.label); pending = true; }
+
+  pollHealth(() => { ready = true; if (pending) scan(); });
 })();
 
+async function fillStrip() {
+  try {
+    const r = await (await fetch('/api/results')).json(); const f = r.final; if (!f) return;
+    const S = f.sentinel, B = f.baseline, n = (r.dataset && r.dataset.test) ? r.dataset.test.docs : null;
+    const cell = (v, label, base) => `<div><b>${(v * 100).toFixed(0)}<em>%</em></b><span>${label} <i>· baseline ${(base * 100).toFixed(0)}%</i></span></div>`;
+    $('#strip').innerHTML = cell(S.doc_injection_recall, 'poisoned documents caught', B.doc_injection_recall) + cell(S.span_precision, 'precision', B.span_precision) + cell(S.doc_fpr_benign_imperative, 'false alarms on harmless commands', B.doc_fpr_benign_imperative);
+    $('#strip').hidden = false;
+    $('#stripnote').innerHTML = `Measured on ${n ? n.toLocaleString() : 'held-out'} documents the models never trained on · <a href="/benchmark">full results</a>`;
+    $('#stripnote').hidden = false;
+  } catch (e) { /* the strip is optional */ }
+}
+
 function setSeg(sel, v) { $$(sel + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
+function note(label) { const t = $('#sampletag'); if (label) { t.hidden = false; $('#sampletext').textContent = label; } else t.hidden = true; }
 function loadExample(i, run) {
   const e = examples[i]; if (!e) return;
   $$('#chips .chip').forEach(c => c.classList.toggle('on', +c.dataset.i === i));
-  $('#box').value = e.tool_output; $('#task').value = e.task; source = e.source; setSeg('#src', source); updateHint();
-  if (run) { markSample(false, e.label); scan(false); }
+  $('#box').value = e.tool_output; $('#task').value = e.task; source = e.source; setSeg('#src', source); updateHint(); note(e.label);
+  if (run) scan();
 }
-function markSample(isSample, label) {
-  sampleShown = isSample;
-  const wrap = $('.sampletag');
-  if (isSample) { wrap.hidden = false; $('#sampletag').textContent = 'Sample scan'; $('#sampletext').textContent = 'This is a real scan of the example above. Change the text or press Scan to run your own.'; }
-  else if (label) { wrap.hidden = false; $('#sampletag').textContent = 'Example'; $('#sampletext').textContent = label; }
-  else wrap.hidden = true;
-}
-function updateHint() {
+function updateHint(msg) {
   const v = $('#box').value;
-  $('#hint').innerHTML = looksLikeUrl(v) ? '<b>That looks like a URL.</b> Sentinel will fetch the page and scan its text.' : 'Tip: paste a URL and Sentinel will fetch the page the way an agent\'s web tool sees it.';
+  $('#hint').innerHTML = msg || (looksLikeUrl(v) ? '<b>That looks like a URL.</b> Sentinel will fetch the page and scan its text.' : 'Tip: paste a URL and Sentinel will fetch the page the way an agent\'s web tool sees it.');
 }
-$('#box').addEventListener('input', () => { updateHint(); if (sampleShown) markSample(false); });
-$('#task').addEventListener('input', () => { if (sampleShown) markSample(false); });
+$('#box').addEventListener('input', () => { updateHint(); $$('#chips .chip').forEach(c => c.classList.remove('on')); note(null); });
+$('#task').addEventListener('input', () => note(null));
 $('#src').onclick = e => { const b = e.target.closest('button'); if (b) { source = b.dataset.v; setSeg('#src', source); } };
 $('#mode').onclick = e => { const b = e.target.closest('button'); if (b) { cmp = b.dataset.v; setSeg('#mode', cmp); } };
 $('#optbtn').onclick = () => { const o = $('#opts'); o.hidden = !o.hidden; $('#optbtn').textContent = o.hidden ? 'Options ▾' : 'Options ▴'; };
-$('#go').onclick = () => { markSample(false); scan(false); };
-document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { markSample(false); scan(false); } });
+$('#go').onclick = () => scan();
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') scan(); });
 
-async function scan(initial) {
-  const box = $('#box').value; if (!box.trim()) { $('#box').focus(); return; }
-  if (busy) return; busy = true;
+/* drop a file onto the box */
+const comp = $('#composer');
+['dragenter', 'dragover'].forEach(ev => comp.addEventListener(ev, e => { e.preventDefault(); comp.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => comp.addEventListener(ev, e => { e.preventDefault(); comp.classList.remove('drag'); }));
+comp.addEventListener('drop', async e => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
+  if (f.size > 2_000_000) { updateHint('That file is over 2 MB; try a smaller one.'); return; }
+  let text = await f.text();
+  if (/\.html?$/i.test(f.name)) { const r = await post('/api/html-to-text', { html: text }); if (r.ok) text = r.data.text; }
+  $('#box').value = text; $$('#chips .chip').forEach(c => c.classList.remove('on')); note('Loaded ' + f.name);
+  if (/\.eml$/i.test(f.name)) { source = 'email'; setSeg('#src', 'email'); }
+  updateHint('<b>Loaded ' + esc(f.name) + '.</b> Add what the user asked, then press Scan.'); $('#task').focus();
+});
+
+async function scan() {
+  const box = $('#box').value;
+  if (!box.trim()) { const c = $('#composer'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); $('#box').focus(); updateHint('<b>Paste something first,</b> or pick an example below.'); return; }
+  if (busy) return; busy = true; pending = false;
   const go = $('#go'); go.disabled = true; go.innerHTML = '<span class="spin"></span> Scanning…';
-  const el = $('#verdict');
+  const el = $('#verdict'); el.className = 'card';
   try {
     if (looksLikeUrl(box)) {
       const task = $('#task').value.trim() || 'Summarize the page.';
-      const url = box.trim();
-      const r = await post('/api/fetch', { url, task, mode: cmp, origin: 'playground' });
+      const r = await post('/api/fetch', { url: box.trim(), task, mode: cmp, origin: 'playground' });
       if (!r.ok) { el.innerHTML = `<div class="empty"><h3>${r.status === 503 ? 'Models are still loading' : 'Could not fetch that page'}</h3><p>${esc((r.data && r.data.error) || '')}</p></div>`; return; }
       const j = r.data; rememberScan({ task, tool_output: j.text, source: 'webpage', res: j.sentinel || j.baseline });
       renderResult(el, j, j.text, task, j.page);
     } else {
       const task = $('#task').value.trim() || 'Summarize this.';
-      const r = await post('/api/scan', { task, tool_output: box, source, mode: cmp, origin: initial ? 'sample' : 'playground' });
+      const r = await post('/api/scan', { task, tool_output: box, source, mode: cmp, origin: 'playground' });
       if (!r.ok) { el.innerHTML = '<div class="empty"><h3>Models are still loading</h3><p>Give it a few seconds and press Scan again.</p></div>'; return; }
       const j = r.data; rememberScan({ task, tool_output: box, source, res: j.sentinel || j.baseline });
       renderResult(el, j, box, task, null);
     }
+    if (el.getBoundingClientRect().top > innerHeight * 0.7) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) { el.innerHTML = `<div class="empty"><h3>Could not reach the server</h3><p>${esc(e)}</p></div>`; }
   finally { busy = false; go.disabled = false; go.textContent = 'Scan'; }
 }

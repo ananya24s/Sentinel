@@ -188,6 +188,19 @@ def fetch(req: FetchReq):
     return out
 
 
+class HtmlReq(BaseModel):
+    html: str
+
+
+@app.post("/api/html-to-text")
+def html_to_text_api(req: HtmlReq):
+    """Flatten an uploaded HTML file the way an agent's web tool would (comments and alt text kept)."""
+    from sentinel.webfetch import MAX_CHARS, html_to_text
+
+    title, text = html_to_text(req.html)
+    return {"title": title, "text": text[:MAX_CHARS]}
+
+
 @app.get("/api/activity")
 def activity(limit: int = 200):
     return list(reversed(_activity))[:limit]

@@ -13,6 +13,7 @@ Each document is one of:
 import hashlib
 import json
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -41,7 +42,9 @@ def contexts(split):
     """Yield (source, task, context_text)."""
     out = []
     for r in load_jsonl(BIPIA / f"email/{split}.jsonl"):
-        out.append(("email", r["question"], r["context"]))
+        # BIPIA joins the header fields with "|"; real emails (and agents' mail tools) put each on its own line
+        ctx = re.sub(r"\|(?=(?:SUBJECT|EMAIL_FROM|RECEIVED DATE|CONTENT):)", "\n", r["context"])
+        out.append(("email", r["question"], ctx))
     for r in load_jsonl(BIPIA / f"table/{split}.jsonl"):
         out.append(("table", r["question"], r["context"]))
     for r in load_jsonl(BIPIA / f"code/{split}.jsonl"):

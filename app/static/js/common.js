@@ -9,12 +9,38 @@ const PAGES = [
   ['/activity', 'Activity'], ['/integrate', 'Integrate'], ['/benchmark', 'Benchmark'], ['/about', 'About'],
 ];
 
+/* ---------------- theme ---------------- */
+function currentTheme() { return document.documentElement.dataset.theme || 'dark'; }
+function applyTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('sentinel.theme', t); } catch (e) { /* ignore */ } }
+const SUN = '<svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
+const MOON = '<svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>';
+
+/* faint tilted "declassified pages" that sit in the page margins on wide screens */
+function ambientHTML() {
+  const sheet = (side, top, rot, barAt, orange, widths) => {
+    const lines = widths.map(w => `<i style="width:${w}%"></i>`);
+    lines.splice(barAt, 0, `<b class="${orange ? 'o' : ''}" style="width:${orange ? 74 : 88}%"></b>`, '<i style="width:60%"></i>');
+    return `<div class="gsheet ${side}" style="top:${top}px;transform:rotate(${rot}deg)"><i class="h"></i>${lines.join('')}</div>`;
+  };
+  return `<div class="ambient" aria-hidden="true">
+    ${sheet('l', 200, -6, 3, true, [92, 84, 90, 70, 88, 76, 82, 58])}
+    ${sheet('r', 330, 5, 4, false, [88, 94, 72, 86, 90, 66, 80, 74])}
+    ${sheet('l', 760, 4, 2, false, [90, 78, 86, 92, 64, 84, 72, 88])}
+    ${sheet('r', 900, -5, 5, true, [84, 92, 76, 88, 70, 90, 62, 80])}
+    ${sheet('l', 1330, -4, 4, true, [90, 82, 88, 74, 92, 68, 84, 78])}
+    ${sheet('r', 1460, 6, 3, false, [86, 90, 78, 84, 72, 92, 66, 82])}
+  </div>`;
+}
+
 function mountChrome() {
+  document.body.insertAdjacentHTML('afterbegin', ambientHTML());
   const path = location.pathname.replace(/\/$/, '') || '/';
   $('#top').outerHTML = `<header class="top">
     <a class="brand" href="/"><img src="/static/brand/mark.svg" alt="Sentinel logo"><b>Sentinel</b></a>
     <nav class="main">${PAGES.map(([h, n]) => `<a href="${h}" class="${h === path ? 'on' : ''}">${n}</a>`).join('')}</nav>
-    <div class="status"><span class="dot" id="dot"></span><span id="stat">Loading models…</span></div></header>`;
+    <div class="hdr-r"><div class="status"><span class="dot" id="dot"></span><span id="stat">Loading models…</span></div>
+      <button class="themebtn" id="themebtn" aria-label="Switch between light and dark theme" title="Switch theme">${SUN}${MOON}</button></div></header>`;
+  $('#themebtn').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
   $('#bot').outerHTML = `<footer class="bot"><div><img src="/static/brand/mark.svg" alt=""><span>Sentinel · Tool-Output Trust-Boundary Defense · Engineers' Day, LLM Engineering, Problem 5 · Team Bug Slayers</span></div>
     <div><a href="/docs" target="_blank">API reference</a></div></footer>`;
 }
@@ -90,12 +116,19 @@ function renderResult(el, j, text, task, page) {
     <div class="meta"><span><b>${inj}</b> injection${inj === 1 ? '' : 's'} found</span><span><b>${n}</b> spans scanned</span><span><b>${primary.latency_ms}</b> ms</span></div>
     <div class="trust"><span class="tpill t-ok">user task · trusted</span><span class="tpill t-bad">tool output · untrusted (${esc(tc.source)})</span>${tc.spoofed_role_markers.length ? `<span class="tpill t-bad">${tc.spoofed_role_markers.length} forged role marker${tc.spoofed_role_markers.length > 1 ? 's' : ''} stripped</span>` : ''}</div></div>`;
   if (page) h += `<div class="srcline">Fetched <b>${esc(page.title || page.url)}</b> · ${page.chars.toLocaleString()} characters${page.truncated ? ' (first 20,000 scanned)' : ''} · <span style="color:var(--dim)">${esc(page.url)}</span></div>`;
+  h += `<div class="tools"><button class="btn ghost sm" data-copyclean>Copy clean text</button><button class="btn ghost sm" data-dl>Download report</button></div>`;
   h += `<div class="docs ${both ? 'c3' : 'c2'}">`;
   h += docCard('As received', received(text, primary), null, both);
   if (j.sentinel) h += docCard(both ? 'Sentinel → agent receives' : 'What the agent receives', processed(j.sentinel), j.sentinel.action, both);
   if (j.baseline) h += docCard(both ? 'Baseline → agent receives' : 'What the agent receives (baseline)', processed(j.baseline), j.baseline.action, both);
   h += '</div>' + spanSection(primary) + offtaskSection(primary);
   el.innerHTML = h;
+  const cc = $('[data-copyclean]', el); if (cc) cc.onclick = () => { navigator.clipboard.writeText(primary.processed_content); flash(cc, 'Copied'); };
+  const dl = $('[data-dl]', el); if (dl) dl.onclick = () => {
+    const report = { generated_at: new Date().toISOString(), task, source: tc.source, tool_output: text, sentinel: j.sentinel || null, baseline: j.baseline || null };
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+    a.download = 'sentinel-report.json'; a.click(); URL.revokeObjectURL(a.href);
+  };
   const b = $('[data-showall]', el);
   if (b) b.onclick = () => { const hs = $$('.span.minor', el); const show = hs[0]?.hidden; hs.forEach(e => e.hidden = !show); b.textContent = show ? 'hide low-risk spans' : 'show low-risk spans'; };
 }

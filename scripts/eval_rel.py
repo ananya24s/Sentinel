@@ -15,7 +15,7 @@ from sklearn.pipeline import make_pipeline
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from sentinel import baseline
+from sentinel import baseline, relevance
 from sentinel.fusion import logit
 from sentinel.metrics import evaluate, summary_line
 from sentinel.pipeline import SPOOF
@@ -29,7 +29,7 @@ def load(split):
     X, y, g, ix = [], [], [], []
     for di, (d, s, r) in enumerate(zip(docs, sc, rel)):
         for i, (p, f) in enumerate(zip(s, r)):
-            X.append([logit(p)] + f); y.append(d["spans"][i]["label"]); g.append(di); ix.append((di, i))
+            X.append([logit(p)] + f + relevance.text_flags(d["spans"][i]["text"])); y.append(d["spans"][i]["label"]); g.append(di); ix.append((di, i))
     return docs, sc, np.array(X), np.array(y), np.array(g), ix
 
 def to_scores(docs, ix, prob, thr):
@@ -43,7 +43,7 @@ def to_scores(docs, ix, prob, thr):
 
 def best_thr(y, p):
     best, thr = -1, 0.5
-    for t in np.linspace(0.05, 0.95, 91):
+    for t in np.linspace(0.05, 0.99, 95):
         pred = p >= t
         tp, fp, fn = (pred & (y == 1)).sum(), (pred & (y == 0)).sum(), ((~pred) & (y == 1)).sum()
         f1 = 2 * tp / max(1, 2 * tp + fp + fn)
@@ -53,7 +53,7 @@ def best_thr(y, p):
 def main():
     cdocs, csc, Xc, yc, gc, cix = load("cal")
     tdocs, tsc, Xt, yt, gt, tix = load("test")
-    names = ["scorer_logit", "s_task", "s_ctx", "z_ctx", "log_n"]
+    names = ["scorer_logit", "s_task", "s_ctx", "z_ctx", "log_n", "addr_assistant", "addr_request", "is_header"]
     models = {
         "LR": lambda: make_pipeline(StandardScaler(), LogisticRegression(C=1.0, class_weight="balanced", max_iter=2000)),
         "GBM": lambda: HistGradientBoostingClassifier(max_depth=3, learning_rate=0.08, max_iter=150, class_weight="balanced", random_state=0),

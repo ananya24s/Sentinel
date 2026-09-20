@@ -77,7 +77,7 @@ class Sentinel:
         elif texts:
             p = self.scorer.predict(source, task, texts)
             F = relevance.features(task, texts)
-            X = np.array([[logit(pi)] + list(fi) for pi, fi in zip(p, F)])
+            X = np.array([[logit(pi)] + list(fi) + relevance.text_flags(sp.text) for sp, pi, fi in zip(spans, p, F)])
             q = self.gbm.predict_proba(X)[:, 1]
             for sp, pi, fi, qi in zip(spans, p, F, q):
                 v = {"start": sp.start, "end": sp.end, "text": sp.text, "score": round(float(qi), 4),
@@ -89,7 +89,7 @@ class Sentinel:
                              reason="impersonates a trusted role (forged system / assistant marker)")
                 elif qi >= self.thr:
                     v["verdict"] = "injection"
-                    v["reason"] = self._reason(pi, fi)
+                    v["reason"] = self._reason(pi, fi, bool(relevance.text_flags(sp.text)[0]))
                 verdicts.append(v)
 
         inj = [v for v in verdicts if v["verdict"] == "injection"]
@@ -111,7 +111,7 @@ class Sentinel:
         }
 
     @staticmethod
-    def _reason(p: float, f) -> str:
+    def _reason(p: float, f, addressed: bool = False) -> str:
         why = []
         if p >= 0.5:
             why.append("reads as an instruction aimed at the agent")
@@ -119,6 +119,8 @@ class Sentinel:
             why.append("is the odd one out on this page")
         if f[0] < 0.12:
             why.append("has nothing to do with the user's task")
+        if addressed:
+            why.append("speaks directly to the assistant")
         return " · ".join(why) if why else "combined instruction and off-task signals"
 
     @staticmethod
