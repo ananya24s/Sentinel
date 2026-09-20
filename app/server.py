@@ -201,6 +201,65 @@ def html_to_text_api(req: HtmlReq):
     return {"title": title, "text": text[:MAX_CHARS]}
 
 
+# ------------------------------------------------------------------ benchmark: live re-run + error explorer
+_bench: dict = {}
+
+
+def _bench_sample() -> dict:
+    if "docs" not in _bench:
+        f = APP / "bench_sample.json"
+        docs = json.load(open(f)) if f.exists() else []
+        _bench["docs"] = {d["id"]: d for d in docs}
+    return _bench["docs"]
+
+
+class BenchReq(BaseModel):
+    id: str = Field(max_length=64)
+
+
+def _outcome(doc: dict, res: dict) -> dict:
+    """Same doc-level definitions as sentinel/metrics.py: a poisoned doc is caught if any injected span is flagged;
+    a harmless-command or clean doc is a false alarm if any non-injected span is flagged."""
+    flagged = {(v["start"], v["end"]) for v in res["spans"] if v["verdict"] == "injection"}
+    labels = {(a, b): l for a, b, l in doc["spans"]}
+    hit = any(k in flagged and labels.get(k) for k in labels)
+    fa = any(k in flagged and not labels.get(k) for k in labels)
+    if doc["kind"] == "poisoned":
+        return {"outcome": "caught" if hit else "missed", "flagged": len(flagged), "ms": res.get("latency_ms")}
+    return {"outcome": "false_alarm" if fa else "passed", "flagged": len(flagged), "ms": res.get("latency_ms")}
+
+
+@app.get("/api/benchmark/sample")
+def bench_sample_list():
+    docs = _bench_sample()
+    return [{"id": d["id"], "kind": d["kind"], "family": d["family"], "source": d["source"], "origin": d["origin"]}
+            for d in docs.values()]
+
+
+@app.post("/api/benchmark/run")
+def bench_run(req: BenchReq):
+    s = _state["sentinel"]
+    if s is None:
+        return JSONResponse({"error": "model still loading"}, status_code=503)
+    d = _bench_sample().get(req.id)
+    if d is None:
+        return JSONResponse({"error": "unknown document"}, status_code=404)
+    out = {}
+    with _lock:
+        for m in ("sentinel", "baseline"):
+            t0 = time.time()
+            r = s.scan(d["task"], d["text"], d["source"], mode=m)
+            r["latency_ms"] = round((time.time() - t0) * 1000)
+            out[m] = _outcome(d, r)
+    return {"id": d["id"], "kind": d["kind"], "family": d["family"], "source": d["source"], **out}
+
+
+@app.get("/api/benchmark/errors")
+def bench_errors():
+    f = APP / "bench_errors.json"
+    return json.load(open(f)) if f.exists() else JSONResponse({"error": "not exported yet"}, status_code=404)
+
+
 @app.get("/api/activity")
 def activity(limit: int = 200):
     return list(reversed(_activity))[:limit]

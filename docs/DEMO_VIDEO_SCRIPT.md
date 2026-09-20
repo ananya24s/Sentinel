@@ -37,8 +37,8 @@ time, they are always the live results. Record at 1440×900 or larger, browser z
 **Say:** "For a developer this is three lines: pass in the user's task and the tool output, and give the model the cleaned text. This is the real API response. And here is what the model would read: on the left, an agent today, with the instruction inside its context; on the right, after Sentinel, the same page with only that instruction gone. The code below is generated from this exact request, so you can paste and run it. It returns the cleaned content, the trust classification, the flagged spans and an action, exactly what the challenge specifies." *(cut to Activity for two seconds)*
 
 ## 2:40 – 3:00 · Results and honesty (Benchmark)
-**Screen:** Benchmark. Scroll slowly past the KPI cards, then the ablation table, then **What we tried and did not adopt**.
-**Say:** "On documents the models never trained on, including real web pages from sites they never saw, Sentinel catches [read the number] of poisoned documents against [baseline] for the baseline, with far fewer false alarms. Our first idea, a behavioural test with a small language model, didn't work at that size. We measured it, dropped it, and replaced it with the off-task check that did. Sentinel, by Team Bug Slayers."
+**Screen:** Benchmark. Scroll past the KPI cards and the ablation table to **Re-run it live**. Press **Run 120 documents** and let the squares fill (about 30 seconds; speed the wait up in the edit). Then scroll to **Where it fails**, switch to **Missed attacks**, click **Show document** on one.
+**Say:** "On documents the models never trained on, including real web pages from sites they never saw, Sentinel catches [read the number] of poisoned documents against [baseline] for the baseline, with far fewer false alarms. Don't trust the table: this button runs a random 120 of those test documents through the real pipeline right now. And here is where it fails: the attacks it misses and the harmless text it wrongly flags, listed openly. Our first idea, a behavioural test with a small language model, didn't work at that size. We measured it, dropped it, and replaced it with the off-task check that did. Sentinel, by Team Bug Slayers."
 
 ---
 
@@ -46,6 +46,6 @@ time, they are always the live results. Record at 1440×900 or larger, browser z
 - If a scan is slow the first time, do one warm-up scan before recording.
 - Keep the cursor still while numbers are on screen; zoom in on the scoreboard in the edit.
 - The green "Models ready" dot in the header should be visible in the first shot.
-- Deep links for quick re-takes: `/#compare`, `/#ex=3` (pre-loads that example; add `&run` to scan it too, e.g. `/#ex=3&run`), `/attack-lab#run` (auto-runs every case), `/how-it-works#stage=4`, and `?theme=light` on any page.
+- Deep links for quick re-takes: `/#compare`, `/#ex=3` (pre-loads that example; add `&run` to scan it too, e.g. `/#ex=3&run`), `/attack-lab#run` (auto-runs every case), `/how-it-works#stage=4`, `/benchmark#live` (auto-runs the 120-document re-run) and `?theme=light` on any page.
 - You can also drop a `.txt`, `.html` or `.eml` file onto the Home box; it is a nice extra shot if you have time.
 - If the live URL fetch to a public site is needed on camera, check your Wi-Fi first; the three local demo pages always work offline.
