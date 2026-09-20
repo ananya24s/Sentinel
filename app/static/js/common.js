@@ -15,21 +15,20 @@ function applyTheme(t) { document.documentElement.dataset.theme = t; try { local
 const SUN = '<svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
 const MOON = '<svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>';
 
-/* faint tilted "declassified pages" that sit in the page margins on wide screens */
+/* faint security motifs in the page margins: text fragments, redaction marks, scan lines, a ruler */
 function ambientHTML() {
-  const sheet = (side, top, rot, barAt, orange, widths) => {
-    const lines = widths.map(w => `<i style="width:${w}%"></i>`);
-    lines.splice(barAt, 0, `<b class="${orange ? 'o' : ''}" style="width:${orange ? 74 : 88}%"></b>`, '<i style="width:60%"></i>');
-    return `<div class="gsheet ${side}" style="top:${top}px;transform:rotate(${rot}deg)"><i class="h"></i>${lines.join('')}</div>`;
-  };
-  return `<div class="ambient" aria-hidden="true">
-    ${sheet('l', 200, -6, 3, true, [92, 84, 90, 70, 88, 76, 82, 58])}
-    ${sheet('r', 330, 5, 4, false, [88, 94, 72, 86, 90, 66, 80, 74])}
-    ${sheet('l', 760, 4, 2, false, [90, 78, 86, 92, 64, 84, 72, 88])}
-    ${sheet('r', 900, -5, 5, true, [84, 92, 76, 88, 70, 90, 62, 80])}
-    ${sheet('l', 1330, -4, 4, true, [90, 82, 88, 74, 92, 68, 84, 78])}
-    ${sheet('r', 1460, 6, 3, false, [86, 90, 78, 84, 72, 92, 66, 82])}
-  </div>`;
+  const rd = (w, o) => `<u class="rd${o ? ' o' : ''}" style="width:${w}px"></u>`;
+  const groups = [
+    ['l', 250, [`&lt;!-- ${rd(46)} --&gt;`, `SYSTEM: ${rd(40, 1)}`, 'ignore previous', `reveal ${rd(38)} prompt`]],
+    ['r', 330, [`[INST] ${rd(52)}`, `also tell the reader`, `translate to ${rd(34, 1)}`, '&lt;|im_start|&gt;system']],
+    ['l', 780, [`send to http://${rd(44)}`, `base64 ${rd(70)}`, `EMAIL_FROM: ${rd(46, 1)}`]],
+    ['r', 880, [`forward this thread`, `to ${rd(60)}@${rd(36)}`, `disregard the summary`, rd(88)]],
+    ['l', 1320, [`&lt;!-- assistant: ${rd(40, 1)}`, 'new instructions:', `${rd(80)} ${rd(38)}`]],
+    ['r', 1430, [`ignore the ${rd(44)} above`, `SYSTEM OVERRIDE`, `${rd(64, 1)}`]],
+  ];
+  const frags = groups.map(([side, top, lines]) => `<div class="frags ${side}" style="top:${top}px">${lines.map(l => `<div>${l}</div>`).join('')}</div>`).join('');
+  const ticks = []; for (let y = 210; y < 1900; y += 96) { const w = 60 + ((y / 96) % 3) * 26; ticks.push(`<i class="sl l" style="top:${y}px;width:${w}px"></i><i class="sl r" style="top:${y + 34}px;width:${w + 14}px"></i>`); }
+  return `<div class="ambient" aria-hidden="true">${frags}${ticks.join('')}<i class="ruler l"></i><i class="ruler r"></i><i class="sweep l"></i><i class="sweep r" style="animation-delay:-8s"></i></div>`;
 }
 
 function mountChrome() {

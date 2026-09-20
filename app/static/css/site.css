@@ -3,7 +3,7 @@
   --tint:rgba(255,255,255,.07); --tint2:rgba(255,255,255,.03); --boardbg:rgba(14,17,22,.92);
   --sheet-shadow:0 18px 40px -18px rgba(0,0,0,.7);
   --code-fg:#d5dae2; --k:#ff8a6f; --s:#8fd3b6; --n:#e0c27a; --c:#6f7a89;
-  --ghost-bg:rgba(255,255,255,.035); --ghost-line:rgba(255,255,255,.075); --ghost-bar:#FF5A36; --ghost-op:.9;
+  --frag:rgba(232,235,240,.17); --frag-bar:rgba(232,235,240,.13); --frag-line:rgba(232,235,240,.09); --ghost-bg:rgba(255,255,255,.035); --ghost-line:rgba(255,255,255,.075); --ghost-bar:#FF5A36; --ghost-op:.9;
   --ink:#0E1116; --panel:#151A22; --panel2:#1B212B; --line:#2A313C; --line2:#343C49;
   --text:#E8EBF0; --muted:#8A93A0; --dim:#5F6977;
   --sig:#FF5A36; --sigDark:#C9391A; --sigTint:#FFE9E2;
@@ -270,7 +270,7 @@ tr.detail td{background:var(--panel2)}
   --tint:rgba(18,22,28,.06); --tint2:rgba(18,22,28,.035); --boardbg:rgba(245,246,248,.92);
   --sheet-shadow:0 14px 30px -16px rgba(20,30,50,.35),0 0 0 1px #E3E6EB;
   --code-fg:#2B323C; --k:#C9391A; --s:#12805f; --n:#9a6a00; --c:#7b8494;
-  --ghost-bg:rgba(255,255,255,.9); --ghost-line:#E3E6EB; --ghost-bar:#0E1116; --ghost-op:.75;
+  --frag:rgba(18,22,28,.24); --frag-bar:rgba(18,22,28,.15); --frag-line:rgba(18,22,28,.10); --ghost-bg:rgba(255,255,255,.9); --ghost-line:#E3E6EB; --ghost-bar:#0E1116; --ghost-op:.75;
 }
 :root[data-theme="light"] .t-bad,:root[data-theme="light"] .pill.bad,:root[data-theme="light"] .expect.a,:root[data-theme="light"] .tb.u small,:root[data-theme="light"] .home-hero .tag{color:#C9391A}
 :root[data-theme="light"] .t-ok,:root[data-theme="light"] .pill.good,:root[data-theme="light"] .tb.t small{color:#12805f}
@@ -292,13 +292,6 @@ tr.detail td{background:var(--panel2)}
 body{position:relative;overflow-x:hidden}
 .wrap{position:relative;z-index:1}
 .ambient{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.gsheet{position:absolute;width:300px;height:390px;border-radius:6px;background:var(--ghost-bg);border:1px solid var(--ghost-line);padding:30px 26px;display:flex;flex-direction:column;gap:11px;opacity:var(--ghost-op)}
-:root[data-theme="light"] .gsheet{box-shadow:0 18px 40px -22px rgba(20,30,50,.35)}
-.gsheet.l{right:calc(50% + 585px)} .gsheet.r{left:calc(50% + 585px)}
-.gsheet i{display:block;height:8px;border-radius:4px;background:var(--ghost-line)}
-.gsheet i.h{height:11px;width:46%;background:var(--ghost-line);margin-bottom:8px}
-.gsheet b{display:block;height:20px;border-radius:3px;background:var(--ghost-bar)}
-.gsheet b.o{background:#FF5A36}
 @media(max-width:1240px){.ambient{display:none}}
 
 /* ---------- result tools, trust strip, drop target ---------- */
@@ -323,7 +316,6 @@ body{position:relative;overflow-x:hidden}
 @media(max-width:700px){.strip{grid-template-columns:1fr}.strip>div{border-right:0;border-bottom:1px solid var(--line)}}
 
 [hidden]{display:none !important}
-.gsheet b.o{opacity:.8}
 
 /* ---------- small screens: one-row scrollable nav ---------- */
 @media(max-width:1100px){
@@ -338,3 +330,41 @@ body{position:relative;overflow-x:hidden}
   .composer{padding:12px} .tools{justify-content:flex-start;flex-wrap:wrap}
   .board{gap:16px}
 }
+
+/* ---------- margin motifs ---------- */
+.frags{position:absolute;width:300px;font:400 12px/2 var(--mono);color:var(--frag);white-space:nowrap;overflow:hidden}
+.frags.l{right:calc(50% + 604px);text-align:right;-webkit-mask-image:linear-gradient(to left,transparent 0,#000 40%);mask-image:linear-gradient(to left,transparent 0,#000 40%)}
+.frags.r{left:calc(50% + 604px);text-align:left;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 40%);mask-image:linear-gradient(to right,transparent 0,#000 40%)}
+.rd{display:inline-block;height:.8em;border-radius:2px;background:var(--frag-bar);vertical-align:-1px;margin:0 2px}
+.rd.o{background:rgba(255,90,54,.5)}
+.sl{position:absolute;height:1px;background:linear-gradient(90deg,transparent,var(--frag-line))}
+.sl.l{right:calc(50% + 604px);transform:scaleX(-1)} .sl.r{left:calc(50% + 604px)}
+.ruler{position:absolute;top:200px;width:9px;height:1700px;background:repeating-linear-gradient(to bottom,var(--frag-line) 0 1px,transparent 1px 12px)}
+.ruler.l{right:calc(50% + 632px)} .ruler.r{left:calc(50% + 632px)}
+.sweep{position:absolute;width:180px;height:2px;top:140px;opacity:0;background:linear-gradient(90deg,transparent,rgba(255,90,54,.4),transparent);animation:sweep 18s linear infinite}
+.sweep.l{right:calc(50% + 604px)} .sweep.r{left:calc(50% + 604px)}
+@keyframes sweep{0%{top:140px;opacity:0}6%{opacity:.7}94%{opacity:.7}100%{top:1850px;opacity:0}}
+@media(prefers-reduced-motion:reduce){.sweep{display:none}}
+
+/* ---------- home: the scanner is the hero; everything around it is quieter ---------- */
+.home-hero{padding:26px 0 20px}
+.home-hero h1{font-size:40px}
+.home-hero p{color:var(--dim);font-size:16px;max-width:560px}
+.composer{padding:22px;border-radius:22px;border-color:var(--line2);box-shadow:0 44px 100px -56px rgba(255,90,54,.5),0 0 0 1px rgba(255,90,54,.04)}
+.composer textarea{min-height:210px;padding:18px;font-size:14px}
+.composer .row input{padding:16px 17px}
+.composer .btn{padding:0 34px;font-size:15px}
+.tryrow .lbl{color:var(--dim)}
+.chip{background:transparent;color:var(--muted);font-size:11.5px}
+.chip:hover{color:var(--text)}
+.chip.on{color:var(--text)}
+.optlink{color:var(--dim)}
+.strip{max-width:none;margin:22px 0 0;background:transparent;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0}
+.strip>div{padding:12px 8px;border-right-color:var(--line)}
+.strip b{font:600 22px/1.1 var(--serif);color:var(--text2)}
+.strip b em{color:var(--sig);opacity:.85}
+.strip span{font-size:12px;color:var(--dim);margin-top:4px}
+.stripnote{margin:8px 0 6px;font-size:11.5px}
+.stale{opacity:.42;filter:saturate(.55);transition:.2s}
+.btn.pulse{animation:pulse 1.5s ease-out 2}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,54,.55)}100%{box-shadow:0 0 0 16px rgba(255,90,54,0)}}

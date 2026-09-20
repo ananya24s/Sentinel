@@ -16,7 +16,7 @@ time, they are always the live results. Record at 1440×900 or larger, browser z
 **Say:** "AI agents read web pages and emails. Attackers hide instructions in them, and the agent can't tell the difference. This is Sentinel. It reads the content first, blacks out only the hidden instruction, and hands the agent everything else. On documents it has never seen, it catches [read the first number] of poisoned ones, with the baseline at [read the baseline number]."
 
 ## 0:20 – 0:55 · Use it (Home)
-**Screen:** Click **Hidden HTML comment**; the box fills and the scan runs. Let the redaction bar and stamp play. Then open **Options**, choose **Side by side with baseline**, and click **Harmless admin email**.
+**Screen:** Click **Hidden HTML comment**; the box fills but nothing is scanned yet (the Scan button pulses). Press **Scan** and let the redaction bar and stamp play. Then open **Options**, choose **Side by side with baseline**, click **Harmless admin email**, then press **Scan**.
 **Say:** "Here's a normal page with an instruction hidden in an HTML comment. Sentinel removes it, and only it. Now a harmless admin email full of polite commands. Sentinel passes it untouched, and the baseline raises a false alarm. Catching attacks is easy if you flag everything; the hard part is not breaking normal content."
 
 ## 0:50 – 1:15 · A real URL (Home)
@@ -45,6 +45,6 @@ time, they are always the live results. Record at 1440×900 or larger, browser z
 - If a scan is slow the first time, do one warm-up scan before recording.
 - Keep the cursor still while numbers are on screen; zoom in on the scoreboard in the edit.
 - The green "Models ready" dot in the header should be visible in the first shot.
-- Deep links for quick re-takes: `/#compare`, `/#ex=3` (pre-loads and scans that example), `/attack-lab#run` (auto-runs every case), `/how-it-works#stage=4`, and `?theme=light` on any page.
+- Deep links for quick re-takes: `/#compare`, `/#ex=3` (pre-loads that example; add `&run` to scan it too, e.g. `/#ex=3&run`), `/attack-lab#run` (auto-runs every case), `/how-it-works#stage=4`, and `?theme=light` on any page.
 - You can also drop a `.txt`, `.html` or `.eml` file onto the Home box; it is a nice extra shot if you have time.
 - If the live URL fetch to a public site is needed on camera, check your Wi-Fi first; the three local demo pages always work offline.
