@@ -25,15 +25,16 @@ time, they are always the live results. Record at 1440×900 or larger, browser z
 
 ## 1:15 – 1:55 · Attack lab
 **Screen:** Attack lab → **Run all cases**. Let the scoreboard fill. Hover the cards slowly. Click **Details** on one attack.
-**Say:** "Twenty cases: fourteen ways attackers hide instructions, four harmless look-alikes, and two known limits that we show on purpose. Sentinel removes [read the number] of fourteen attacks and passes all four harmless pages. The baseline removes fewer and raises false alarms. Here are the two we miss: an override written in French, and a genuine question in an email. English-only training data is a real limit, and we'd rather show it than hide it."
+**Then (10 sec):** scroll up to **Try your own**, press **Fill with a sample**, then **Add and run**. A new card appears: Sentinel removed the hidden line, the baseline missed it. Say: "And you can add your own attack here. This one is a fake account-suspended notice; the baseline misses it."
+**Say:** "Twenty cases: fourteen ways attackers hide instructions, four harmless look-alikes, and two known limits that we show on purpose. Sentinel removes [read the number] of fourteen attacks and passes all four harmless pages. The baseline removes fewer and raises false alarms. Here is what we miss: an override written in French, and a couple of subtle ones, like a sales push that reads like normal page copy. English-only training data is a real limit, and we'd rather show it than hide it."
 
 ## 1:55 – 2:20 · How it works
 **Screen:** How it works → step through the five stages quickly (Next stage ×4).
 **Say:** "Five stages. Trust comes from the channel: only the user's request is trusted. The text is cut into spans. A small language model scores each span. Then an off-task check asks whether the span belongs on this page and to this task at all. An injection is the odd one out. The verdict removes only the spans that fail."
 
 ## 2:20 – 2:40 · It is a function, not a website
-**Screen:** Integrate → click through the Python / REST / Command line tabs, then point at the live request and response.
-**Say:** "For a developer this is three lines: pass in the user's task and the tool output, and give the model the cleaned text. It returns the cleaned content, the trust classification, the flagged spans and an action, exactly what the challenge specifies. Every detection is logged." *(cut to Activity for two seconds)*
+**Screen:** Integrate. Click **Hidden HTML comment**, press **Send request**. Point at the real response on the right, then scroll to **What your model receives**: left has the hidden instruction highlighted, right has it removed. Finish on the **Copy it into your code** tabs (Python, cURL, On ALERT), which are filled in with the same text.
+**Say:** "For a developer this is three lines: pass in the user's task and the tool output, and give the model the cleaned text. This is the real API response. And here is what the model would read: on the left, an agent today, with the instruction inside its context; on the right, after Sentinel, the same page with only that instruction gone. The code below is generated from this exact request, so you can paste and run it. It returns the cleaned content, the trust classification, the flagged spans and an action, exactly what the challenge specifies." *(cut to Activity for two seconds)*
 
 ## 2:40 – 3:00 · Results and honesty (Benchmark)
 **Screen:** Benchmark. Scroll slowly past the KPI cards, then the ablation table, then **What we tried and did not adopt**.

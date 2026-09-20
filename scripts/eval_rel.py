@@ -41,10 +41,16 @@ def to_scores(docs, ix, prob, thr):
             if SPOOF.search(sp["text"]): out[di][i] = 1.0
     return out
 
-def best_thr(y, p):
+MAX_BENIGN_FPR = 0.02  # harmless-command docs may be falsely flagged at most this often on cal (a margin: unseen templates raise it on test)
+
+def best_thr(y, p, g=None, benign=None):
+    """F1-maximising threshold, subject to the false-alarm ceiling on harmless-command documents."""
     best, thr = -1, 0.5
     for t in np.linspace(0.05, 0.99, 95):
         pred = p >= t
+        if g is not None and benign:
+            fl = {d for d in benign if pred[(g == d) & (y == 0)].any()}
+            if len(fl) / len(benign) > MAX_BENIGN_FPR: continue
         tp, fp, fn = (pred & (y == 1)).sum(), (pred & (y == 0)).sum(), ((~pred) & (y == 1)).sum()
         f1 = 2 * tp / max(1, 2 * tp + fp + fn)
         if f1 > best: best, thr = f1, float(t)
@@ -59,11 +65,13 @@ def main():
         "GBM": lambda: HistGradientBoostingClassifier(max_depth=3, learning_rate=0.08, max_iter=150, class_weight="balanced", random_state=0),
     }
     cv = {}
+    benign = [i for i, d in enumerate(cdocs) if d["kind"] == "benign"]
+    print("cal harmless-command docs:", len(benign))
     for name, mk in models.items():
         oof = np.zeros(len(yc))
         for tr, te in GroupKFold(5).split(Xc, yc, gc):
             oof[te] = mk().fit(Xc[tr], yc[tr]).predict_proba(Xc[te])[:, 1]
-        f1, thr = best_thr(yc, oof)
+        f1, thr = best_thr(yc, oof, gc, benign)
         cv[name] = (f1, thr)
         print(f"cal CV  {name:4s} F1={f1:.3f} thr={thr:.2f}")
     pick = max(cv, key=lambda k: cv[k][0]); thr = cv[pick][1]

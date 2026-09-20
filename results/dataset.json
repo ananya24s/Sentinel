@@ -1,30 +1,30 @@
 {
  "train": {
-  "docs": 6600,
-  "poisoned": 3300,
+  "docs": 9904,
+  "poisoned": 4952,
   "families": 26,
-  "spans": 161106,
+  "spans": 489528,
   "realweb_docs": 0
  },
  "val": {
   "docs": 1188,
   "poisoned": 396,
-  "families": 10,
-  "spans": 45241,
+  "families": 11,
+  "spans": 45292,
   "realweb_docs": 0
  },
  "cal": {
-  "docs": 1945,
-  "poisoned": 965,
+  "docs": 1951,
+  "poisoned": 971,
   "families": 23,
-  "spans": 127285,
+  "spans": 127296,
   "realweb_docs": 1372
  },
  "test": {
-  "docs": 1755,
-  "poisoned": 885,
+  "docs": 1749,
+  "poisoned": 879,
   "families": 29,
-  "spans": 71353,
+  "spans": 71749,
   "realweb_docs": 572
  },
  "real_pages": 146

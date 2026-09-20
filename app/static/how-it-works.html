@@ -4,8 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How Sentinel works</title>
 <link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/fonts.css">
 <link rel="stylesheet" href="/static/css/site.css">
 <script>document.documentElement.dataset.theme=(function(){var q=new URLSearchParams(location.search).get('theme');if(q==='light'||q==='dark')return q;try{return localStorage.getItem('sentinel.theme')}catch(e){return null}})()||(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')</script>
 </head>
@@ -97,7 +96,7 @@ const VIEWS = [
     return `<h2>4 · Off-task check: does it belong here at all?</h2>
     <p class="why">An injection is, by construction, <b>not about what the user asked and not about what the page is about</b>. For every span we measure how close it is to the user's task, and how well it fits the rest of the document with that span left out (a leave-one-out coherence check using a small sentence-embedding model). The odd one out gets a high score.</p>
     ${top.map(s => { const g = s.signals; return `<div class="infl"><p class="q">“${esc(clip(s.text, 150))}”</p><div class="three">${bar('Reads like an instruction', g.instruction_likeness, g.instruction_likeness >= .5)}${bar('Related to your task', Math.max(0, g.task_relatedness), false)}${bar('Fits the rest of the page', Math.max(0, g.page_coherence), false)}</div><div class="mets"><span class="met">odd-one-out <b>${g.oddness_z > 0 ? '+' : ''}${g.oddness_z.toFixed(1)}</b></span><span class="met">fused score <b>${s.score.toFixed(2)}</b></span></div></div>`; }).join('')}
-    <p class="note">A gradient-boosted model combines the scorer's confidence with these off-task signals. We first tried to measure this by running a small LLM with and without each span. It did not work at that model size (see the Benchmark page), so we measure the off-task signal directly.</p>`;
+    <p class="note">A gradient-boosted model combines the scorer's confidence with these off-task signals and three cheap linguistic flags: does the sentence speak directly to the assistant (“when you write your answer…”), does it refer to the user's original request, and does it look like a mail header. We first tried to measure this by running a small LLM with and without each span. It did not work at that model size (see the Benchmark page), so we measure the off-task signal directly.</p>`;
   },
   () => { // verdict
     const inj = R.detected_spans;

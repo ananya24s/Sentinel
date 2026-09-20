@@ -16,19 +16,19 @@ Numbers below are filled in from `results/*.json` by `scripts/render_docs.py`. S
 ## Evidence
 
 **4. How do you know it generalises and you didn't overfit?**
-**Two hold-outs.** Whole attack families never appear in training (the test set has {FAMS} of them), and for real web pages the *sites* are held out too, so test pages come from domains the models never saw. A seeded random third of the families was carved out for calibrating the fusion and excluded from evaluation. The test set was scored once, after the model and threshold were chosen by cross-validation on the calibration split.
+**Two hold-outs.** Whole attack families never appear in training (the test set has 29 of them), and for real web pages the *sites* are held out too, so test pages come from domains the models never saw. A seeded random third of the families was carved out for calibrating the fusion and excluded from evaluation. The test set was scored once, after the model and threshold were chosen by cross-validation on the calibration split.
 
 **5. Give me the headline numbers.**
-**On {TEST_DOCS} held-out documents Sentinel catches {DOC_S} of poisoned documents versus {DOC_B} for the baseline, with precision {PREC_S} versus {PREC_B}.** On real web pages alone, from sites never seen in training: {RW_DOC_S} caught, precision {RW_PREC_S} versus {RW_PREC_B} for the baseline, and harmless-command false alarms {RW_FA_S} versus {RW_FA_B}.
+**On 1,749 held-out documents Sentinel catches 87% of poisoned documents versus 49% for the baseline, with precision 94% versus 43%.** On real web pages alone, from sites never seen in training: 86% caught, precision 98% versus 21% for the baseline, and harmless-command false alarms 1% versus 42%.
 
 **6. What about false positives? Anyone can catch attacks by flagging everything.**
-**We score that directly.** "False alarms on harmless commands" is the share of documents containing a normal instruction-shaped sentence (a recipe step, an admin email, an HTML comment) where something harmless was flagged: {FA_S} for Sentinel versus {FA_B} for the baseline. Content preserved is {KEEP_S}. The Attack lab includes four harmless look-alikes; Sentinel passes {LAB_H_S} of {LAB_H_T}, the baseline {LAB_H_B}.
+**We score that directly.** "False alarms on harmless commands" is the share of documents containing a normal instruction-shaped sentence (a recipe step, an admin email, an HTML comment) where something harmless was flagged: 3% for Sentinel versus 18% for the baseline. Content preserved is 99.8%. The Attack lab includes four harmless look-alikes; Sentinel passes 4 of 4, the baseline 2.
 
 **7. Is your baseline a strawman?**
 **No, but it is our implementation of what the brief describes:** boundary tagging plus deterministic instruction patterns (override phrases, imperative and question detectors, second-person address). It is reasonably strong on classic overrides and weak on reworded or hidden attacks, which is the point of the comparison. All of it is in `sentinel/baseline.py`.
 
 **8. Did you use the recommended datasets?**
-**BIPIA, yes.** We did not use AgentDojo because it needs a full running agent; instead we built a real-web evaluation by harvesting {REAL_PAGES} public pages and inserting attacks, split by site. That is a gap and we say so.
+**BIPIA, yes.** We did not use AgentDojo because it needs a full running agent; instead we built a real-web evaluation by harvesting 146 public pages and inserting attacks, split by site. That is a gap and we say so.
 
 ## Robustness and limits
 
@@ -42,7 +42,7 @@ Numbers below are filled in from `results/*.json` by `scripts/render_docs.py`. S
 **Cost, latency, privacy and self-attack.** A judge LLM reading untrusted text can itself be injected. We did test a small local LLM as a verifier: it added a little recall but raised false alarms, so it didn't make the final system.
 
 **12. Does removing a span change the meaning of what's left?**
-**We remove one span and leave every other word verbatim,** so content preservation is {KEEP_S}. The removed span is replaced by a visible marker, so the agent (and a human reading the log) can see something was there.
+**We remove one span and leave every other word verbatim,** so content preservation is 99.8%. The removed span is replaced by a visible marker, so the agent (and a human reading the log) can see something was there.
 
 **13. What about attacks that aren't instructions, like misinformation in a page?**
 **Out of scope.** Sentinel targets indirect prompt injection: text that tries to steer the agent. Factual poisoning needs different defenses.

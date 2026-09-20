@@ -17,7 +17,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = Path(__file__).resolve().parent
@@ -74,16 +74,16 @@ def startup():
 
 
 class ScanReq(BaseModel):
-    task: str
-    tool_output: str
+    task: str = Field(max_length=2_000)
+    tool_output: str = Field(max_length=200_000)
     source: str = "webpage"
     mode: str = "sentinel"  # sentinel | baseline | both
     origin: str = "api"
 
 
 class FetchReq(BaseModel):
-    url: str
-    task: str = "Summarize the page."
+    url: str = Field(max_length=2_000)
+    task: str = Field("Summarize the page.", max_length=2_000)
     mode: str = "sentinel"
     origin: str = "playground"
 
@@ -189,7 +189,7 @@ def fetch(req: FetchReq):
 
 
 class HtmlReq(BaseModel):
-    html: str
+    html: str = Field(max_length=2_500_000)
 
 
 @app.post("/api/html-to-text")

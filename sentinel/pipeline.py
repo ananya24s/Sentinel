@@ -9,7 +9,7 @@ Stages
   2 scorer      DeBERTa-v3-small cross-encoder over (source + user task, span)
   3 off-task    leave-one-out coherence: how far is the span from the user's task and from the rest of the
                 document (MiniLM embeddings)
-  4 verdict     gradient-boosted fusion of the scorer confidence and the off-task features
+  4 verdict     gradient-boosted fusion of the scorer confidence, the off-task features and three linguistic flags
   5 action      ALLOW / NEUTRALIZE / ALERT
 """
 from __future__ import annotations

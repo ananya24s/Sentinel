@@ -4,8 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>About · Sentinel</title>
 <link rel="icon" type="image/svg+xml" href="/static/brand/mark-flat.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/fonts.css">
 <link rel="stylesheet" href="/static/css/site.css">
 <script>document.documentElement.dataset.theme=(function(){var q=new URLSearchParams(location.search).get('theme');if(q==='light'||q==='dark')return q;try{return localStorage.getItem('sentinel.theme')}catch(e){return null}})()||(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')</script>
 </head>
@@ -36,7 +35,7 @@
     <h2>Limitations, stated plainly</h2>
     <div class="lim">
       <div><b>English only.</b> Training data is English. An override written in French or another language is likely to be missed (it is in the Attack lab as a known limit).</div>
-      <div><b>Question-shaped text is the hardest case.</b> A genuine question inside an email can be flagged, and a benign email header line can occasionally be flagged too.</div>
+      <div><b>Subtle attacks near the threshold can slip through.</b> A hidden sales push that reads like normal page copy, or a reworded override that scores just under the cut-off, may be missed (two of the fourteen Attack-lab attacks are). Question-shaped text is also hard: the genuine question in our lab passes, but similar text can be flagged in other contexts.</div>
       <div><b>Benchmark plus generated attacks.</b> Training uses BIPIA, templated attack families and real web pages. An attack style far from all of those may be missed.</div>
       <div><b>Small boundary test.</b> Boundary classification is 100% on 16 hand-written cases. The rule is structural (trust comes from the channel), but the test set is small.</div>
       <div><b>Not a complete defense.</b> Sentinel reduces what reaches the model; it does not replace least-privilege tool access and human approval for risky actions.</div>
@@ -48,6 +47,7 @@
       <li>A larger verifier for the uncertain middle band, once a bigger local model is practical.</li>
       <li>Drop-in adapters for agent frameworks and MCP tool servers.</li>
       <li>Per-source thresholds, and streaming scans for long documents.</li>
+      <li>A hosted version with accounts, API keys and per-team activity logs. This prototype is a local tool and deliberately has no login.</li>
     </ul>
 
     <h2>The team</h2>

@@ -35,7 +35,7 @@ def main(argv=None):
     r = Sentinel().scan(a.task, text, a.source)
     if a.json:
         print(json.dumps(r, indent=2))
-        return 0
+        return 0 if r["action"] == "ALLOW" else 2
     print(f"ACTION: {r['action']}    ({len(r['detected_spans'])} injection(s) in {len(r['spans'])} spans)\n")
     for v in r["detected_spans"]:
         print(f"  ✗ {v['text'][:110]!r}\n      {v['reason']}")

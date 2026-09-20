@@ -77,30 +77,41 @@ def _bucket(key):
 
 
 def realweb_contexts(rng):
-    """Windows of real, harvested web pages. Split by site (Wikipedia by page) so test sites are never seen."""
-    path = ROOT / "data/raw/webcorpus.json"
+    """Windows of real, harvested web pages. Split by site (Wikipedia by page) so test sites are never seen.
+
+    A second corpus (data/raw/webcorpus_extra.json: AI / security / technical docs) is always used for TRAINING.
+    """
     out = {"train": [], "val": [], "cal": [], "test": []}
-    if not path.exists():
-        return out
-    for pg in json.load(open(path)):
-        key = pg["url"] if "wikipedia.org" in pg["domain"] else pg["domain"]
-        b = _bucket(key)
-        split = {0: "test", 1: "cal", 2: "val"}.get(b, "train")
+
+    def windows(pg, n):
         lines = pg["text"].split("\n")
         title = (pg["title"] or "").split("|")[0].split(" - ")[0].strip()
-        for _ in range(6):
+        res = []
+        for _ in range(n):
             if len(lines) < 8:
                 break
             i = rng.randint(0, max(0, len(lines) - 8))
-            buf, n = [], 0
-            while i < len(lines) and n < rng.randint(1800, 3800):
-                buf.append(lines[i]); n += len(lines[i]) + 1; i += 1
+            buf, size = [], 0
+            while i < len(lines) and size < rng.randint(1800, 3800):
+                buf.append(lines[i]); size += len(lines[i]) + 1; i += 1
             ctx = "\n".join(buf)
             if len(ctx) < 300:
                 continue
-            task = (rng.choice([f"Summarize the page about {title}.", f"What is this page about?", f"Give me the key points of this page."])
+            task = (rng.choice([f"Summarize the page about {title}.", "What is this page about?", "Give me the key points of this page."])
                     if title and len(title) < 80 else rng.choice(synth.WEB_TASKS))
-            out[split].append(("webpage", task, ctx))
+            res.append(("webpage", task, ctx))
+        return res
+
+    path = ROOT / "data/raw/webcorpus.json"
+    if path.exists():
+        for pg in json.load(open(path)):
+            key = pg["url"] if "wikipedia.org" in pg["domain"] else pg["domain"]
+            split = {0: "test", 1: "cal", 2: "val"}.get(_bucket(key), "train")
+            out[split] += windows(pg, 6)
+    extra = ROOT / "data/raw/webcorpus_extra.json"
+    if extra.exists():
+        for pg in json.load(open(extra)):
+            out["train"] += windows(pg, 8)
     return out
 
 

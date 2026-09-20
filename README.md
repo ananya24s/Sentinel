@@ -18,8 +18,9 @@ trusted task + untrusted tool output
   3. fast scorer  DeBERTa-v3-small cross-encoder over (source + user task, span)
   4. off-task     leave-one-out coherence with MiniLM embeddings: how far is the span from the user's task and
                   from the rest of the document? (injections are off-task and off-topic by construction)
-  5. verdict      gradient-boosted fusion of scorer confidence + off-task features (fitted on a calibration
-                  split of held-out attack families)
+  5. verdict      gradient-boosted fusion of scorer confidence + off-task features + three cheap linguistic flags
+                  (speaks to the assistant / refers to the user's request / looks like a mail header), fitted on a
+                  calibration split of held-out attack families
   6. act          ALLOW / NEUTRALIZE (only the bad span is removed) / ALERT (dangerous payload or repeated attempts)
 ```
 
@@ -103,6 +104,22 @@ python -m uvicorn app.server:app --port 8000     # then open http://localhost:80
   (a harmless instruction-shaped sentence such as "Preheat the oven…").
 * Metrics: span precision / recall, false-positive rate, false alarms on harmless commands, legitimate-content
   preservation, boundary classification accuracy. See `results/`.
+
+## Testing
+
+```bash
+./run.sh                                  # in one terminal
+python scripts/e2e_check.py               # in another: every page, every endpoint, the log, the SDK and the CLI
+python scripts/real_pages_check.py        # scans real public pages (no attacks in them) and lists false alarms
+python scripts/attack_lab_check.py        # the Attack lab scoreboard, without the browser
+```
+
+## Acknowledgements
+
+* **BIPIA** (Microsoft) for the indirect-prompt-injection benchmark; **AG News** for news-style web text.
+* **DeBERTa-v3-small** (Microsoft) and **all-MiniLM-L6-v2** (Sentence-Transformers) as the pretrained models.
+* Real public web pages were harvested only to build clean training and evaluation text; they are not redistributed
+  (`data/raw/` is not part of the repository). See each project's own license for its terms.
 
 ## Layout
 
