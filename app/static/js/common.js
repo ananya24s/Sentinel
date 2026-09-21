@@ -32,7 +32,8 @@ function ambientHTML() {
 }
 
 function mountChrome() {
-  document.body.insertAdjacentHTML('afterbegin', ambientHTML());
+  // the margin motifs assume a centred column; on the full-width pages they would sit under the content
+  if (document.querySelector('main.narrow, main.prose')) document.body.insertAdjacentHTML('afterbegin', ambientHTML());
   const path = location.pathname.replace(/\/$/, '') || '/';
   $('#top').outerHTML = `<header class="top">
     <a class="brand" href="/"><img src="/static/brand/mark.svg" alt="Sentinel logo"><b>Sentinel</b></a>
@@ -100,7 +101,7 @@ function spanSection(res) {
 function offtaskSection(res) {
   const list = res.spans.filter(s => s.signals && (s.verdict === 'injection' || s.score > 0.05)).sort((a, b) => b.score - a.score).slice(0, 4);
   if (!list.length) return '';
-  const bar = (label, v, hot) => `<div class="sig"><div class="sl"><span>${label}</span><b>${(v * 100).toFixed(0)}%</b></div><div class="track"><i style="width:${Math.max(2, Math.min(100, v * 100))}%;${hot ? 'background:var(--sig)' : ''}"></i></div></div>`;
+  const bar = (label, v, hot) => `<div class="sig"><div class="siglab"><span>${label}</span><b>${(v * 100).toFixed(0)}%</b></div><div class="track"><i style="width:${Math.max(2, Math.min(100, v * 100))}%;${hot ? 'background:var(--sig)' : ''}"></i></div></div>`;
   return `<div class="sec"><h3><span>Off-task analysis <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--dim)">· how far each suspicious span sits from the user's task and from the rest of the page</span></span></h3>` + list.map(s => {
     const g = s.signals;
     return `<div class="infl"><p class="q">“${esc(s.text.slice(0, 150))}${s.text.length > 150 ? '…' : ''}”</p>

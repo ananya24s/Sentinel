@@ -92,7 +92,7 @@ const VIEWS = [
   },
   () => { // off-task
     const top = [...R.spans].sort((a, b) => b.score - a.score).slice(0, 6);
-    const bar = (l, v, hot) => `<div class="sig"><div class="sl"><span>${l}</span><b>${(v * 100).toFixed(0)}%</b></div><div class="track"><i style="width:${Math.max(2, Math.min(100, v * 100))}%;${hot ? 'background:var(--sig)' : ''}"></i></div></div>`;
+    const bar = (l, v, hot) => `<div class="sig"><div class="siglab"><span>${l}</span><b>${(v * 100).toFixed(0)}%</b></div><div class="track"><i style="width:${Math.max(2, Math.min(100, v * 100))}%;${hot ? 'background:var(--sig)' : ''}"></i></div></div>`;
     return `<h2>4 · Off-task check: does it belong here at all?</h2>
     <p class="why">An injection is, by construction, <b>not about what the user asked and not about what the page is about</b>. For every span we measure how close it is to the user's task, and how well it fits the rest of the document with that span left out (a leave-one-out coherence check using a small sentence-embedding model). The odd one out gets a high score.</p>
     ${top.map(s => { const g = s.signals; return `<div class="infl"><p class="q">“${esc(clip(s.text, 150))}”</p><div class="three">${bar('Reads like an instruction', g.instruction_likeness, g.instruction_likeness >= .5)}${bar('Related to your task', Math.max(0, g.task_relatedness), false)}${bar('Fits the rest of the page', Math.max(0, g.page_coherence), false)}</div><div class="mets"><span class="met">odd-one-out <b>${g.oddness_z > 0 ? '+' : ''}${g.oddness_z.toFixed(1)}</b></span><span class="met">fused score <b>${s.score.toFixed(2)}</b></span></div></div>`; }).join('')}

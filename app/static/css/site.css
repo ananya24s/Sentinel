@@ -31,7 +31,7 @@ nav.main a.on{color:var(--text);background:var(--panel);box-shadow:0 0 0 1px var
 .status{display:flex;align-items:center;gap:8px;color:var(--muted);font:500 12px var(--sans);white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 3px rgba(224,162,27,.15)}
 .dot.ok{background:var(--safe);box-shadow:0 0 0 3px rgba(31,163,122,.18)}
-footer.bot{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--dim);font:400 12px var(--sans);padding:26px 4px 0;border-top:1px solid var(--line);margin-top:56px}
+footer.bot{position:relative;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--dim);font:400 12px var(--sans);padding:26px 4px 0;border-top:1px solid var(--line);margin-top:56px}
 footer.bot div{display:flex;align-items:center;gap:10px}
 footer.bot img{width:20px;height:20px}
 footer.bot a{color:var(--muted)} footer.bot a:hover{color:var(--text)}
@@ -138,8 +138,8 @@ mark.inj{background:var(--sigTint);color:var(--sigDark);font-weight:600;border-r
 .infl{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel2);margin-bottom:12px}
 .infl .q{font:italic 400 14px var(--serif);color:var(--q);margin:0 0 12px;word-break:break-word}
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.sig .sl{display:flex;justify-content:space-between;font:500 12px var(--sans);color:var(--muted);margin-bottom:2px}
-.sig .sl b{font:600 12px var(--mono);color:var(--text)}
+.sig .siglab{display:flex;justify-content:space-between;font:500 12px var(--sans);color:var(--muted);margin-bottom:2px}
+.sig .siglab b{font:600 12px var(--mono);color:var(--text)}
 .mets{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .met{font:500 12px var(--sans);color:var(--muted);background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .met b{color:var(--text);font:600 12px var(--mono)}
